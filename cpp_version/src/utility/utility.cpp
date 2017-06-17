@@ -25,7 +25,7 @@
 
  http://www.imbs-luebeck.de
  #-------------------------------------------------------------------------------*/
-
+#define __USE_MINGW_ANSI_STDIO 0
 #include <math.h>
 #include <iostream>
 #include <sstream>

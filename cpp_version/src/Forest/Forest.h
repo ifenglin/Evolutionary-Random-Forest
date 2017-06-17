@@ -43,6 +43,9 @@
 #include "globals.h"
 #include "Tree.h"
 #include "Data.h"
+#include "mingw.mutex.h"
+#include "mingw.condition_variable.h"
+#include "mingw.thread.h"
 
 class Forest {
 public:

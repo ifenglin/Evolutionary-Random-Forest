@@ -43,9 +43,15 @@
 #include "globals.h"
 #include "Tree.h"
 #include "Data.h"
+#include "DataChar.h"
+#include "DataDouble.h"
+#include "DataFloat.h"
+#include "Genotype.h"
+
 #include "mingw.mutex.h"
 #include "mingw.condition_variable.h"
 #include "mingw.thread.h"
+
 
 class Forest {
 public:
@@ -75,6 +81,13 @@ public:
       bool predict_all, double sample_fraction, double alpha, double minprop, bool holdout,
       PredictionType prediction_type, uint num_random_splits);
   virtual void initInternal(std::string status_variable_name) = 0;
+
+  // data loading functions
+  Data* loadData(std::string input_file);
+  void setData(Data* data);
+
+  // gene bank functions
+  void setGenes(genotype* genes);
 
   // Grow or predict
   void run(bool verbose);
@@ -187,7 +200,9 @@ protected:
   // Verbose output stream, cout if verbose==true, logfile if not
   std::ostream* verbose_out;
 
+  
   size_t num_trees;
+  genotype* genes;
   uint mtry;
   uint min_node_size;
   size_t num_variables;

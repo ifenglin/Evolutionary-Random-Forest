@@ -4,3 +4,4 @@ ranger.Rcheck/
 *.Rproj
 .project
 .cproject
+cpp_version/build-gcc/

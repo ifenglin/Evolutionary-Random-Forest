@@ -52,10 +52,48 @@ Forest::Forest() :
         0), importance_mode(DEFAULT_IMPORTANCE_MODE), progress(0) {
 }
 
+
 Forest::~Forest() {
   for (auto& tree : trees) {
     delete tree;
   }
+}
+
+Data* Forest::loadData(std::string input_file) {
+	Data* data = 0;
+	// Initialize data with memmode
+    switch (this->memory_mode) {
+	case MEM_DOUBLE:
+		data = new DataDouble();
+		break;
+	case MEM_FLOAT:
+		data = new DataFloat();
+		break;
+	case MEM_CHAR:
+		data = new DataChar();
+		break;
+	}
+	
+	// Load data
+	std::cout << "Loading input file: " << input_file << "." << std::endl;
+	bool rounding_error = data->loadFromFile(input_file);
+	if (rounding_error) {
+		std::cout << "Warning: Rounding or Integer overflow occurred. Use FLOAT or DOUBLE precision to avoid this."
+			<< std::endl;
+		return NULL;
+	}
+	else {
+		return data;
+	}
+}
+
+void Forest::setData(Data* data) {
+	this->data = data;
+}
+
+void Forest::setGenes(genotype* genes)
+{
+	this->genes = genes;
 }
 
 // #nocov start
@@ -70,25 +108,10 @@ void Forest::initCpp(std::string dependent_variable_name, MemoryMode memory_mode
 
   this->verbose_out = verbose_out;
 
-  // Initialize data with memmode
-  switch (memory_mode) {
-  case MEM_DOUBLE:
-    data = new DataDouble();
-    break;
-  case MEM_FLOAT:
-    data = new DataFloat();
-    break;
-  case MEM_CHAR:
-    data = new DataChar();
-    break;
-  }
-
-  // Load data
-  *verbose_out << "Loading input file: " << input_file << "." << std::endl;
-  bool rounding_error = data->loadFromFile(input_file);
-  if (rounding_error) {
-    *verbose_out << "Warning: Rounding or Integer overflow occurred. Use FLOAT or DOUBLE precision to avoid this."
-        << std::endl;
+  // Data loading is removed. Data must be loaded before initialization.
+  if (this->data == 0) {
+	  std::cout << "In GARF, data must loaded before initialization." << std::endl;
+	  return;
   }
 
   // Set prediction mode
@@ -98,11 +121,10 @@ void Forest::initCpp(std::string dependent_variable_name, MemoryMode memory_mode
   }
 
   // Call other init function
-  init(dependent_variable_name, memory_mode, data, mtry, output_prefix, num_trees, seed, num_threads, importance_mode,
+  init(dependent_variable_name, memory_mode, NULL, mtry, output_prefix, num_trees, seed, num_threads, importance_mode,
       min_node_size, status_variable_name, prediction_mode, sample_with_replacement, unordered_variable_names,
       memory_saving_splitting, splitrule, predict_all, sample_fraction, alpha, minprop, holdout, prediction_type,
       num_random_splits);
-
   if (prediction_mode) {
     loadFromFile(load_forest_filename);
   }
@@ -197,8 +219,8 @@ void Forest::init(std::string dependent_variable_name, MemoryMode memory_mode, D
     bool predict_all, double sample_fraction, double alpha, double minprop, bool holdout,
     PredictionType prediction_type, uint num_random_splits) {
 
-  // Initialize data with memmode
-  this->data = input_data;
+  // Data loading is removed. Data must be loaded before initialization.
+  //this->data = input_data;
 
   // Initialize random number generator and set seed
   if (seed == 0) {
@@ -258,9 +280,7 @@ void Forest::init(std::string dependent_variable_name, MemoryMode memory_mode, D
   }
 
   no_split_variables.push_back(dependent_varID);
-
   initInternal(status_variable_name);
-
   num_independent_variables = num_variables - no_split_variables.size();
 
   // Sort no split variables in ascending order
@@ -268,7 +288,6 @@ void Forest::init(std::string dependent_variable_name, MemoryMode memory_mode, D
 
   // Init split select weights
   split_select_weights.push_back(std::vector<double>());
-
   // Check if mtry is in valid range
   if (this->mtry > num_variables - 1) {
     throw std::runtime_error("mtry can not be larger than number of variables in data.");
@@ -430,10 +449,17 @@ void Forest::grow() {
       tree_split_select_weights = &split_select_weights[0];
     }
 
-    trees[i]->init(data, mtry, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
+    /*trees[i]->init(data, mtry, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
         tree_split_select_weights, importance_mode, min_node_size, &no_split_variables, sample_with_replacement,
         &is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
-        minprop, holdout, num_random_splits);
+        minprop, holdout, num_random_splits);*/
+
+	uint* g = this->genes[i].gene;
+
+	trees[i]->init(data, g[0], dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
+		tree_split_select_weights, importance_mode, g[1], &no_split_variables, sample_with_replacement,
+		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
+		minprop, holdout, num_random_splits); 
   }
 
 // Init variable importance

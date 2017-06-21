@@ -463,8 +463,10 @@ void Forest::grow() {
   }
 
 // Init variable importance
-  variable_importance.resize(num_independent_variables, 0);
-
+//  variable_importance.resize(num_independent_variables, 0);
+  for (size_t i = 0; i < num_independent_variables; i++) {
+	  variable_importance.push_back(0.0);
+  }
 // Grow trees in multiple threads
 #ifdef OLD_WIN_R_BUILD
   progress = 0;

@@ -5,3 +5,4 @@ ranger.Rcheck/
 .project
 .cproject
 cpp_version/build-gcc/
+cpp_version/Debug/

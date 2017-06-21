@@ -1,7 +1,6 @@
 // 
 //  Change any of these parameters to match your needs 
 //
-# define POPSIZE 10
 # define MAXGENS 1
 # define NVARS 3
 # define PXOVER 0.8

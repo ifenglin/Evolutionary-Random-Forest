@@ -37,17 +37,16 @@ using namespace std;
 
 
 Forest* rf(int argc, char **argv, genotype* genes) {
-	cout << "Start growing forest: " << endl;
-	for (int i = 0; i < argc ; i++) {
-		cout << argv[i] << " ";
-	}
-	cout << endl;
+	//cout << "Start growing forest: " << endl;
+	//for (int i = 0; i < argc ; i++) {
+	//	cout << argv[i] << " ";
+	//}
+	//cout << endl;
   ArgumentHandler arg_handler(argc, argv);
   Forest* forest = 0;
   try {
 
     // Handle command line arguments
-	  cout << "About to process arguments...";
     if (arg_handler.processArguments() != 0) {
 		cout << "Cannot handle command line arguments." << endl;
       return 0;

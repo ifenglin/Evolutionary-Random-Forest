@@ -127,11 +127,20 @@ public:
   const std::vector<double>& getVariableImportance() const {
     return variable_importance;
   }
-  double getOverallPredictionError() const {
+  const double getOverallPredictionError() const {
     return overall_prediction_error;
+  }
+  const std::vector<double> getPredictionErrorEachTree() const {
+    return prediction_error_each_tree;
+  }
+  const double getPredictionErrorOfTree(size_t tree_idx) const {
+    return prediction_error_each_tree.at(tree_idx);
   }
   const std::vector<std::vector<std::vector<double>> >& getPredictions() const {
     return predictions;
+  }
+  const std::vector<std::vector<std::vector<double>> >& getPredictionsEachTree() const {
+	  return predictions_each_tree;
   }
   size_t getDependentVarId() const {
     return dependent_varID;
@@ -244,7 +253,9 @@ protected:
   Data* data;
 
   std::vector<std::vector<std::vector<double>>> predictions;
+  std::vector<std::vector<std::vector<double>>> predictions_each_tree;
   double overall_prediction_error;
+  std::vector<double> prediction_error_each_tree;
 
   // Weight vector for selecting possible split variables, one weight between 0 (never select) and 1 (always select) for each variable
   // Deterministic variables are always selected

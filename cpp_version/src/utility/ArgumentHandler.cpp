@@ -25,7 +25,9 @@ Germany
 
 http://www.imbs-luebeck.de
 #-------------------------------------------------------------------------------*/
-
+#undef	optreset		/* see getopt.h */
+#define	optreset		__mingw_optreset
+extern int optreset;		/* reset getopt */
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -49,6 +51,7 @@ ArgumentHandler::~ArgumentHandler() {
 }
 
 int ArgumentHandler::processArguments() {
+  optreset = 1;
 
   // short options
   char const *short_options = "A:C:D:F:HM:NP:Q:R:S:U:XZa:b:c:f:hil::m:o:pr:s:t:uvwy:z:";

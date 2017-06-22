@@ -152,10 +152,13 @@ void ForestClassification::computePredictionErrorInternal() {
   }
 
   // For each tree loop over OOB samples and count classes
+  // record predictions from each tree
+  predictions_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_samples)));
   for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
     for (size_t sample_idx = 0; sample_idx < trees[tree_idx]->getNumSamplesOob(); ++sample_idx) {
       size_t sampleID = trees[tree_idx]->getOobSampleIDs()[sample_idx];
       double value = ((TreeClassification*) trees[tree_idx])->getPrediction(sample_idx);
+	  predictions_each_tree[0][tree_idx][sampleID] = value;
       ++class_counts[sampleID][value];
     }
   }
@@ -173,6 +176,7 @@ void ForestClassification::computePredictionErrorInternal() {
   // Compare predictions with true data
   size_t num_missclassifications = 0;
   size_t num_predictions = 0;
+  std::vector<size_t> num_missclassifications_each_tree = std::vector<size_t>(num_trees, 0);
   for (size_t i = 0; i < predictions[0][0].size(); ++i) {
     double predicted_value = predictions[0][0][i];
     if (!std::isnan(predicted_value)) {
@@ -182,9 +186,21 @@ void ForestClassification::computePredictionErrorInternal() {
         ++num_missclassifications;
       }
       ++classification_table[std::make_pair(real_value, predicted_value)];
+	  // accumulate errors for each tree
+	  for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
+		  predicted_value = predictions_each_tree[0][tree_idx][i];
+		  if (!std::isnan(predicted_value) && predicted_value != real_value) {
+			  ++num_missclassifications_each_tree[tree_idx];
+		  }
+	  }
     }
   }
   overall_prediction_error = (double) num_missclassifications / (double) num_predictions;
+  //calculate error for each tree
+  prediction_error_each_tree = std::vector<double>(num_trees, 0.0);
+  for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
+	  prediction_error_each_tree[tree_idx] = (double)num_missclassifications_each_tree[tree_idx] / (double)num_predictions;
+  }
 }
 
 // #nocov start

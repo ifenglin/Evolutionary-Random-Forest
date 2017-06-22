@@ -1,5 +1,5 @@
-# define POPSIZE 10
-
+# define POPSIZE 100
+# define MAXGENS 100
 # include <cstdlib>
 # include <iostream>
 # include <iomanip>
@@ -24,13 +24,14 @@ using namespace std;
 
 genotype population[POPSIZE+1];
 genotype newpopulation[POPSIZE+1]; 
-char* file_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\train_data_tiny.csv";
+Forest* forest;
+char* file_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\train_data_small.csv";
 int main ( );
 void crossover ( int &seed );
 void elitist ( );
 void evaluate ( );
 int i4_uniform_ab ( int a, int b, int &seed );
-Forest* initialize ( string filename, int &seed );
+void initialize ( string filename, int &seed );
 void keep_the_best ( );
 void mutate ( int &seed );
 double r8_uniform_ab ( double a, double b, int &seed );
@@ -109,33 +110,23 @@ int main ( )
     cout << "  The crossover modification will not be available,\n";
     cout << "  since it requires 2 <= NVARS.\n";
   }
-  seed = 123456789;
+  seed = 12345678;
 
-  Forest* forest = initialize ( filename, seed );
-  cout << "Start pre-evaluation" << endl;
+  initialize ( filename, seed );
   evaluate ( );
-  cout << "Start keeping the best" << endl;
   keep_the_best ( );
-
+  report(0);
   for ( generation = 0; generation < MAXGENS; generation++ )
   {
-	cout << "= " << generation + 1 << "th generation =" << endl;
-	cout << "#Start selection." << endl;
     selector ( seed );
-	cout << "#Start crossover." << endl;
     crossover ( seed );
-	cout << "#Start mutation." << endl;
     mutate ( seed );
-	cout << "#Start report." << endl;
-    report ( generation );
-	cout << "#Start evaluation." << endl;
+    report ( generation + 1 );
     evaluate ( );
-	cout << "#Start elitist." << endl;
     elitist ( );
-	cout << "#Generation finishes." << endl;
   }
 
-  cout << "\n";
+  /*cout << "\n";
   cout << "  Best member after " << MAXGENS << " generations:\n";
   cout << "\n";
 
@@ -145,7 +136,7 @@ int main ( )
   }
 
   cout << "\n";
-  cout << "  Best fitness = " << population[POPSIZE].fitness << "\n";
+  cout << "  Best fitness = " << population[POPSIZE].fitness << "\n";*/
 //
 //  Terminate.
 //
@@ -356,21 +347,29 @@ void evaluate ( )
 //    This C++ version by John Burkardt.
 //
 {
-  int member;
-  int i;
-  //int x[NVARS];
-  char x[NVARS][10];
+	char pop_size[10];
+	sprintf(pop_size, "%d", POPSIZE);
+	char * args[] = { "ranger", // dummy argument
+		//"--verbose",
+		"--file",
+		file_path,
+		"--depvarname",
+		"\"label\"",
+		"--treetype",
+		"1",
+		"--ntree",
+		pop_size,
+		"--write",
+		"--outprefix",
+		"GARF" };
+	int argc = sizeof(args) / sizeof(*args);
+	// remove unwanted appending char
 
-  for ( member = 0; member < POPSIZE; member++ )
-  {
-    for ( i = 0; i < NVARS; i++ )
-    {
-      //x[i] = int(population[member].gene[i]);
-	  //sprintf(x[i], "%d", int(population[member].gene[i]));
-    } 
-	population[member].fitness = rand();
-
-  }
+	forest = rf(argc, args, population);
+	for (size_t member = 0; member < POPSIZE; member++ )
+	{
+		population[member].fitness = forest->getPredictionErrorOfTree(member);
+	}
 }
 //****************************************************************************80
 
@@ -496,7 +495,7 @@ int i4_uniform_ab ( int a, int b, int &seed )
 }
 //****************************************************************************80
 
-Forest* initialize ( string filename, int &seed )
+void initialize ( string filename, int &seed )
 
 //****************************************************************************80
 // 
@@ -536,9 +535,7 @@ Forest* initialize ( string filename, int &seed )
 //    Input/output, int &SEED, a seed for the random number generator.
 //
 {
-  int i;
   ifstream input;
-  int j;
   double lbound;
   double ubound;
 
@@ -554,11 +551,11 @@ Forest* initialize ( string filename, int &seed )
 // 
 //  Initialize variables within the bounds 
 //
-  for ( i = 0; i < NVARS; i++ )
+  for ( size_t i = 0; i < NVARS; i++ )
   {
     input >> lbound >> ubound;
 
-    for ( j = 0; j < POPSIZE; j++ )
+    for ( size_t j = 0; j < POPSIZE; j++ )
     {
       population[j].fitness = 0;
       population[j].rfitness = 0;
@@ -570,27 +567,26 @@ Forest* initialize ( string filename, int &seed )
   }
 
   input.close();
-  char pop_size[10];
-  sprintf(pop_size, "%d", POPSIZE);
-  char * args[] = { "ranger", // dummy argument
-	  "--verbose",
-	  "--file",
-	  file_path,
-	  "--depvarname",
-	  "\"label\"",
-	  "--treetype",
-	  "1",
-	  "--ntree",
-	  pop_size,
-	  "--write",
-	  "--outprefix",
-	  "GARF" };
-  int argc = sizeof(args) / sizeof(*args) ;
-  // remove unwanted appending char
+  //char pop_size[10];
+  //sprintf(pop_size, "%d", POPSIZE);
+  //char * args[] = { "ranger", // dummy argument
+	 // "--verbose",
+	 // "--file",
+	 // file_path,
+	 // "--depvarname",
+	 // "\"label\"",
+	 // "--treetype",
+	 // "1",
+	 // "--ntree",
+	 // pop_size,
+	 // "--write",
+	 // "--outprefix",
+	 // "GARF" };
+  //int argc = sizeof(args) / sizeof(*args) ;
+  //// remove unwanted appending char
 
-  args[argc-1] = "";
-  Forest* forest = rf(argc, args, population);
-  return forest;
+  //args[argc-1] = "";
+  //forest = rf(argc, args, population);
 }
 //****************************************************************************80
 
@@ -816,11 +812,21 @@ void report ( int generation )
   double sum;
   double sum_square;
 
+ /* cout << "Fitness of each tree:" << endl;
+  for (size_t i = 0; i < POPSIZE; ++i)
+  {
+	  cout << i << "(";
+	  for (size_t j = 0; j < NVARS; ++j) {
+		  cout << population[i].gene[j] << ',';
+	  }
+	  cout << ") " << population[i].fitness << endl;
+  }*/
+
   if ( generation == 0 )
   {
     cout << "\n";
-    cout << "  Generation       Best            Average       Standard \n";
-    cout << "  number           value           fitness       deviation \n";
+    cout << "  Generation       Best            Average       Standard         Overall\n";
+    cout << "  number           value           fitness       deviation       OOB Error\n";
     cout << "\n";
   }
 
@@ -841,7 +847,8 @@ void report ( int generation )
   cout << "  " << setw(8) << generation 
        << "  " << setw(14) << best_val 
        << "  " << setw(14) << avg 
-       << "  " << setw(14) << stddev << "\n";
+       << "  " << setw(14) << forest->getOverallPredictionError()
+	   << "  " << setw(14) << stddev << "\n";
 
   return;
 }

@@ -350,7 +350,10 @@ void Forest::writeOutput() {
   } else {
     *verbose_out << "Overall OOB prediction error:      " << overall_prediction_error << std::endl;
     *verbose_out << std::endl;
-
+	/**verbose_out << "OOB prediction error for each tree:" << std::endl;
+	for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
+		*verbose_out << tree_idx << ": " << prediction_error_each_tree[tree_idx] << std::endl;
+	}*/
     if (!split_select_weights.empty() & !split_select_weights[0].empty()) {
       *verbose_out
           << "Warning: Split select weights used. Variable importance measures are only comparable for variables with equal weights."
@@ -454,10 +457,11 @@ void Forest::grow() {
         &is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
         minprop, holdout, num_random_splits);*/
 
-	uint* g = this->genes[i].gene;
+	uint *g = this->genes[i].gene;
+	double sample_fraction = (double)g[2] / (double)num_samples;
 
-	trees[i]->init(data, g[0], dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
-		tree_split_select_weights, importance_mode, g[1], &no_split_variables, sample_with_replacement,
+	trees[i]->init(data, (int)g[0], dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
+		tree_split_select_weights, importance_mode, (int)g[1], &no_split_variables, sample_with_replacement,
 		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
 		minprop, holdout, num_random_splits); 
   }

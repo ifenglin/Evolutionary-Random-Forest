@@ -37,6 +37,7 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include <numeric>
 #include <condition_variable>
 #endif
 
@@ -135,6 +136,22 @@ public:
   }
   const double getPredictionErrorOfTree(size_t tree_idx) const {
     return prediction_error_each_tree.at(tree_idx);
+  }
+  const double getOverallCorrelation() const {
+	  double sum = 0;
+	  for (size_t i = 0; i < num_trees; ++i) {
+		  sum += getAverageCorrelation(i);
+	  }
+	  return sum/num_trees;
+  }
+  const double getAverageCorrelation(size_t tree_idx) const {
+	  return std::accumulate(correlation_each_tree[0][tree_idx].begin(), correlation_each_tree[0][tree_idx].end(), 0.0f)/num_trees;
+  }
+  const double getCorrelation(size_t tree_idx1, size_t tree_idx2) const {
+	  return correlation_each_tree[0][tree_idx1][tree_idx2];
+  }
+  const double getMaxCorrelation(size_t tree_idx) const {
+	  return *std::max_element(correlation_each_tree[0][tree_idx].begin(), correlation_each_tree[0][tree_idx].end());
   }
   const std::vector<std::vector<std::vector<double>> >& getPredictions() const {
     return predictions;
@@ -254,6 +271,7 @@ protected:
 
   std::vector<std::vector<std::vector<double>>> predictions;
   std::vector<std::vector<std::vector<double>>> predictions_each_tree;
+  std::vector<std::vector<std::vector<double>>> correlation_each_tree;
   double overall_prediction_error;
   std::vector<double> prediction_error_each_tree;
 

@@ -196,11 +196,52 @@ void ForestClassification::computePredictionErrorInternal() {
     }
   }
   overall_prediction_error = (double) num_missclassifications / (double) num_predictions;
+
   //calculate error for each tree
   prediction_error_each_tree = std::vector<double>(num_trees, 0.0);
   for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
 	  prediction_error_each_tree[tree_idx] = (double)num_missclassifications_each_tree[tree_idx] / (double)num_predictions;
   }
+
+  // calculate (directed) correlation
+  correlation_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_trees)));
+  std::vector<size_t> intersected_oob_sampleIDs;
+  std::vector<size_t> i_oob_sampleIDs;
+  std::vector<size_t> j_oob_sampleIDs;
+  double true_value, correlation_rate;
+  size_t correlated_count, uncorrelated_count;
+  for (size_t i = 0; i < num_trees; ++i) {
+	  for (size_t j = i + 1; j < num_trees; ++j) {
+		  correlated_count = 0;
+		  uncorrelated_count = 0;
+		  i_oob_sampleIDs = trees[i]->getOobSampleIDs();
+		  j_oob_sampleIDs = trees[j]->getOobSampleIDs();
+		  std::set_intersection(i_oob_sampleIDs.begin(), i_oob_sampleIDs.end(), j_oob_sampleIDs.begin(), j_oob_sampleIDs.end(), std::back_inserter(intersected_oob_sampleIDs));
+		  for (size_t sample_idx = 0; sample_idx < intersected_oob_sampleIDs.size(); ++sample_idx) {
+			  size_t sampleID = intersected_oob_sampleIDs[sample_idx];
+			  true_value = data->get(sampleID, dependent_varID);
+			  if (predictions_each_tree[0][i][sampleID] != predictions_each_tree[0][j][sampleID]) {
+				  ++uncorrelated_count;
+			  }
+			  else {
+				  if (predictions_each_tree[0][i][sampleID] != true_value) {
+					  ++correlated_count;
+				  }
+			  }
+		  }
+		  correlation_rate = (double)correlated_count / (double)(correlated_count + uncorrelated_count);
+		  // set correlation only to the tree that has a higher prediction error
+		  if (prediction_error_each_tree[i] < prediction_error_each_tree[j]) {
+			  correlation_each_tree[0][i][j] = 0;
+			  correlation_each_tree[0][j][i] = correlation_rate;
+		  }
+		  else {
+			  correlation_each_tree[0][i][j] = correlation_rate;
+			  correlation_each_tree[0][j][i] = 0;
+		  }
+	  }
+  }
+
 }
 
 // #nocov start

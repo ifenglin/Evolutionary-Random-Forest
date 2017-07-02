@@ -1,5 +1,5 @@
-# define POPSIZE 100
-# define MAXGENS 100
+# define MAX_POP_SIZE 10000
+# define VERBOSE false
 # include <cstdlib>
 # include <iostream>
 # include <iomanip>
@@ -22,10 +22,14 @@ using namespace std;
 //  cfitness: the cumulative fitness.
 //
 
-genotype population[POPSIZE+1];
-genotype newpopulation[POPSIZE+1]; 
+genotype population[MAX_POP_SIZE];
+genotype newpopulation[MAX_POP_SIZE];
 Forest* forest;
-char* file_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\train_data_small.csv";
+size_t pop_size, max_gens;
+double lambda;
+std::ostream* verbose_out;
+std::string base_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\";
+std::string file_name = "train_data_small.csv";
 int main ( );
 void crossover ( int &seed );
 void elitist ( );
@@ -86,17 +90,36 @@ int main ( )
 //
 //  Parameters:
 //
-//    MAXGENS is the maximum number of generations.
+//    max_gens is the maximum number of generations.
 //
 //    NVARS is the number of problem variables.
 //
 //    PMUTATION is the probability of mutation.
 //
-//    POPSIZE is the population size. 
+//    pop_size is the population size. 
 //
 //    PXOVER is the probability of crossover.                          
 //
 {
+	// Verbose output to logfile if non-verbose mode
+	if (VERBOSE) {
+		verbose_out = &std::cout;
+	}
+	else {
+		std::ofstream* logfile = new std::ofstream();
+		char filename[20];
+		std::string file_path;
+		time_t t = time(0);
+		strftime(filename, sizeof(filename), "%Y%m%d%H%M%S", gmtime(&t));
+		strcat(filename, ".txt");
+		file_path = base_path + std::string(filename);
+		logfile->open(file_path);
+		if (!logfile->good()) {
+			throw std::runtime_error("Could not write to logfile.");
+		}
+		verbose_out = logfile;
+		cout << "Writing output to " << file_path << endl;
+	}
   string filename = "C:\\Users\\i-fen\\Documents\\ERF_Project\\forest_init_config.txt";
   int generation;
   int i;
@@ -106,9 +129,9 @@ int main ( )
 
   if ( NVARS < 2 )
   {
-    cout << "\n";
-    cout << "  The crossover modification will not be available,\n";
-    cout << "  since it requires 2 <= NVARS.\n";
+    *verbose_out << "\n";
+    *verbose_out << "  The crossover modification will not be available,\n";
+    *verbose_out << "  since it requires 2 <= NVARS.\n";
   }
   seed = 12345678;
 
@@ -116,7 +139,7 @@ int main ( )
   evaluate ( );
   keep_the_best ( );
   report(0);
-  for ( generation = 0; generation < MAXGENS; generation++ )
+  for ( generation = 0; generation < max_gens; generation++ )
   {
     selector ( seed );
     crossover ( seed );
@@ -126,26 +149,27 @@ int main ( )
     elitist ( );
   }
 
-  /*cout << "\n";
-  cout << "  Best member after " << MAXGENS << " generations:\n";
-  cout << "\n";
+  /**verbose_out << "\n";
+  *verbose_out << "  Best member after " << max_gens << " generations:\n";
+  *verbose_out << "\n";
 
   for ( i = 0; i < NVARS; i++ )
   {
-    cout << "  var(" << i << ") = " << population[POPSIZE].gene[i] << "\n";
+    *verbose_out << "  var(" << i << ") = " << population[pop_size].gene[i] << "\n";
   }
 
-  cout << "\n";
-  cout << "  Best fitness = " << population[POPSIZE].fitness << "\n";*/
+  *verbose_out << "\n";
+  *verbose_out << "  Best fitness = " << population[pop_size].fitness << "\n";*/
 //
 //  Terminate.
 //
-  cout << "\n";
-  cout << "SIMPLE_GA:\n";
-  cout << "  Normal end of execution.\n";
-  cout << "\n";
+  *verbose_out << "\n";
+  *verbose_out << "SIMPLE_GA:\n";
+  *verbose_out << "  Normal end of execution.\n";
+  *verbose_out << "\n";
   timestamp ( );
   char a;
+  cout << "Time to say goodbye!" << endl;
   cin >> a;
   return 0;
 }
@@ -188,7 +212,7 @@ void crossover ( int &seed )
   int first = 0;
   double x;
 
-  for ( mem = 0; mem < POPSIZE; ++mem )
+  for ( mem = 0; mem < pop_size; ++mem )
   {
     x = r8_uniform_ab ( a, b, seed );
 
@@ -256,7 +280,7 @@ void elitist ( )
   best = population[0].fitness;
   worst = population[0].fitness;
 
-  for ( i = 0; i < POPSIZE - 1; ++i )
+  for ( i = 0; i < pop_size - 1; ++i )
   {
     if ( population[i+1].fitness < population[i].fitness )
     {
@@ -299,21 +323,21 @@ void elitist ( )
 //  worst individual from the current population with the 
 //  best one from the previous generation                     
 //
-  if ( population[POPSIZE].fitness <= best )
+  if ( population[pop_size].fitness <= best )
   {
     for ( i = 0; i < NVARS; i++ )
     {
-      population[POPSIZE].gene[i] = population[best_mem].gene[i];
+      population[pop_size].gene[i] = population[best_mem].gene[i];
     }
-    population[POPSIZE].fitness = population[best_mem].fitness;
+    population[pop_size].fitness = population[best_mem].fitness;
   }
   else
   {
     for ( i = 0; i < NVARS; i++ )
     {
-      population[worst_mem].gene[i] = population[POPSIZE].gene[i];
+      population[worst_mem].gene[i] = population[pop_size].gene[i];
     }
-    population[worst_mem].fitness = population[POPSIZE].fitness;
+    population[worst_mem].fitness = population[pop_size].fitness;
   } 
 
   return;
@@ -347,18 +371,21 @@ void evaluate ( )
 //    This C++ version by John Burkardt.
 //
 {
-	char pop_size[10];
-	sprintf(pop_size, "%d", POPSIZE);
+	char pop_size_char[6];
+	char file_path_char[100];
+	sprintf(pop_size_char, "%d", pop_size);
+	std::string file_path  = base_path + file_name;
+	strcpy(file_path_char, file_path.c_str());
 	char * args[] = { "ranger", // dummy argument
 		//"--verbose",
 		"--file",
-		file_path,
+		file_path_char,
 		"--depvarname",
 		"\"label\"",
 		"--treetype",
 		"1",
 		"--ntree",
-		pop_size,
+		pop_size_char,
 		"--write",
 		"--outprefix",
 		"GARF" };
@@ -366,9 +393,11 @@ void evaluate ( )
 	// remove unwanted appending char
 
 	forest = rf(argc, args, population);
-	for (size_t member = 0; member < POPSIZE; member++ )
-	{
-		population[member].fitness = forest->getPredictionErrorOfTree(member);
+	double prediction_error, max_correlation;
+	for (size_t member = 0; member < pop_size; member++ ) {
+		prediction_error = forest->getPredictionErrorOfTree(member);
+		max_correlation = forest->getMaxCorrelation(member);
+		population[member].fitness = max(0.0, 1 - prediction_error - (lambda * max_correlation));
 	}
 }
 //****************************************************************************80
@@ -541,6 +570,7 @@ void initialize ( string filename, int &seed )
 
   input.open ( filename.c_str ( ) );
 
+
   if ( !input )
   {
     cerr << "\n";
@@ -548,14 +578,21 @@ void initialize ( string filename, int &seed )
     cerr << "  Cannot open the input file!\n";
     exit ( 1 );
   }
+//  Initialize hyper parameters
+  input >> max_gens >> pop_size >> lambda;
+  *verbose_out << "Max generations: " << max_gens << endl;
+  *verbose_out << "Population size: " << pop_size << endl;
+  *verbose_out << "Lambda         : " << lambda << endl;
+  *verbose_out << "N. of variables: " << NVARS << endl;
+  *verbose_out << "Parameter ranges: " << endl;
 // 
 //  Initialize variables within the bounds 
 //
   for ( size_t i = 0; i < NVARS; i++ )
   {
     input >> lbound >> ubound;
-
-    for ( size_t j = 0; j < POPSIZE; j++ )
+	*verbose_out << "   " << i + 1 << ": [" << lbound << ", " << ubound << "]" << endl;
+    for ( size_t j = 0; j < pop_size; j++ )
     {
       population[j].fitness = 0;
       population[j].rfitness = 0;
@@ -568,7 +605,7 @@ void initialize ( string filename, int &seed )
 
   input.close();
   //char pop_size[10];
-  //sprintf(pop_size, "%d", POPSIZE);
+  //sprintf(pop_size, "%d", pop_size);
   //char * args[] = { "ranger", // dummy argument
 	 // "--verbose",
 	 // "--file",
@@ -627,12 +664,12 @@ void keep_the_best ( )
 
   cur_best = 0;
 
-  for ( mem = 0; mem < POPSIZE; mem++ )
+  for ( mem = 0; mem < pop_size; mem++ )
   {
-    if ( population[POPSIZE].fitness < population[mem].fitness )
+    if ( population[pop_size].fitness < population[mem].fitness )
     {
       cur_best = mem;
-      population[POPSIZE].fitness = population[mem].fitness;
+      population[pop_size].fitness = population[mem].fitness;
     }
   }
 // 
@@ -640,7 +677,7 @@ void keep_the_best ( )
 //
   for ( i = 0; i < NVARS; i++ )
   {
-    population[POPSIZE].gene[i] = population[cur_best].gene[i];
+    population[pop_size].gene[i] = population[cur_best].gene[i];
   }
 
   return;
@@ -686,7 +723,7 @@ void mutate ( int &seed )
   double ubound;
   double x;
 
-  for ( i = 0; i < POPSIZE; i++ )
+  for ( i = 0; i < pop_size; i++ )
   {
     for ( j = 0; j < NVARS; j++ )
     {
@@ -812,43 +849,45 @@ void report ( int generation )
   double sum;
   double sum_square;
 
- /* cout << "Fitness of each tree:" << endl;
-  for (size_t i = 0; i < POPSIZE; ++i)
+ /* *verbose_out << "Fitness of each tree:" << endl;
+  for (size_t i = 0; i < pop_size; ++i)
   {
-	  cout << i << "(";
+	  *verbose_out << i << "(";
 	  for (size_t j = 0; j < NVARS; ++j) {
-		  cout << population[i].gene[j] << ',';
+		  *verbose_out << population[i].gene[j] << ',';
 	  }
-	  cout << ") " << population[i].fitness << endl;
+	  *verbose_out << ") " << population[i].fitness << endl;
   }*/
 
   if ( generation == 0 )
   {
-    cout << "\n";
-    cout << "  Generation       Best            Average       Standard         Overall\n";
-    cout << "  number           value           fitness       deviation       OOB Error\n";
-    cout << "\n";
+    *verbose_out << "\n";
+    *verbose_out << "  Generation       Best            Average       Standard         Overall         Overall\n";
+    *verbose_out << "  number           value           fitness       deviation       OOB Error      Correlation\n";
+    *verbose_out << "\n";
   }
 
   sum = 0.0;
   sum_square = 0.0;
 
-  for ( i = 0; i < POPSIZE; i++ )
+  for ( i = 0; i < pop_size; i++ )
   {
     sum = sum + population[i].fitness;
     sum_square = sum_square + population[i].fitness * population[i].fitness;
   }
 
-  avg = sum / ( double ) POPSIZE;
-  square_sum = avg * avg * POPSIZE;
-  stddev = sqrt ( ( sum_square - square_sum ) / ( POPSIZE - 1 ) );
-  best_val = population[POPSIZE].fitness;
+  avg = sum / ( double ) pop_size;
+  square_sum = avg * avg * pop_size;
+  stddev = sqrt ( ( sum_square - square_sum ) / ( pop_size - 1 ) );
+  best_val = population[pop_size].fitness;
 
-  cout << "  " << setw(8) << generation 
+  *verbose_out << "  " << setw(8) << generation 
        << "  " << setw(14) << best_val 
        << "  " << setw(14) << avg 
        << "  " << setw(14) << forest->getOverallPredictionError()
-	   << "  " << setw(14) << stddev << "\n";
+	   << "  " << setw(14) << stddev 
+	   << "  " << setw(14) << forest->getOverallCorrelation()
+	   << "\n";
 
   return;
 }
@@ -896,14 +935,14 @@ void selector ( int &seed )
 //  Find the total fitness of the population.
 //
   sum = 0.0;
-  for ( mem = 0; mem < POPSIZE; mem++ )
+  for ( mem = 0; mem < pop_size; mem++ )
   {
     sum = sum + population[mem].fitness;
   }
 //
 //  Calculate the relative fitness of each member.
 //
-  for ( mem = 0; mem < POPSIZE; mem++ )
+  for ( mem = 0; mem < pop_size; mem++ )
   {
     population[mem].rfitness = population[mem].fitness / sum;
   }
@@ -911,7 +950,7 @@ void selector ( int &seed )
 //  Calculate the cumulative fitness.
 //
   population[0].cfitness = population[0].rfitness;
-  for ( mem = 1; mem < POPSIZE; mem++ )
+  for ( mem = 1; mem < pop_size; mem++ )
   {
     population[mem].cfitness = population[mem-1].cfitness +       
       population[mem].rfitness;
@@ -919,7 +958,7 @@ void selector ( int &seed )
 // 
 //  Select survivors using cumulative fitness. 
 //
-  for ( i = 0; i < POPSIZE; i++ )
+  for ( i = 0; i < pop_size; i++ )
   { 
     p = r8_uniform_ab ( a, b, seed );
     if ( p < population[0].cfitness )
@@ -928,7 +967,7 @@ void selector ( int &seed )
     }
     else
     {
-      for ( j = 0; j < POPSIZE; j++ )
+      for ( j = 0; j < pop_size; j++ )
       { 
         if ( population[j].cfitness <= p && p < population[j+1].cfitness )
         {
@@ -940,7 +979,7 @@ void selector ( int &seed )
 // 
 //  Overwrite the old population with the new one.
 //
-  for ( i = 0; i < POPSIZE; i++ )
+  for ( i = 0; i < pop_size; i++ )
   {
     population[i] = newpopulation[i]; 
   }
@@ -986,7 +1025,7 @@ void timestamp ( )
 
   len = strftime ( time_buffer, TIME_SIZE, "%d %B %Y %I:%M:%S %p", tm );
 
-  cout << time_buffer << "\n";
+  *verbose_out << time_buffer << "\n";
 
   return;
 # undef TIME_SIZE

@@ -75,7 +75,7 @@ Data* Forest::loadData(std::string input_file) {
 	}
 	
 	// Load data
-	std::cout << "Loading input file: " << input_file << "." << std::endl;
+	std::cout << "Loading input file: " << input_file << "...";
 	bool rounding_error = data->loadFromFile(input_file);
 	if (rounding_error) {
 		std::cout << "Warning: Rounding or Integer overflow occurred. Use FLOAT or DOUBLE precision to avoid this."
@@ -83,6 +83,7 @@ Data* Forest::loadData(std::string input_file) {
 		return NULL;
 	}
 	else {
+		std::cout << "completed." << std::endl;
 		return data;
 	}
 }

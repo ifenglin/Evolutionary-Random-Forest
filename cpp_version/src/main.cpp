@@ -8,6 +8,7 @@
 # include <cmath>
 # include <ctime>
 # include <cstring>
+# include <ctime>
 # include "rf.h"
 
 using namespace std;
@@ -29,13 +30,13 @@ size_t pop_size, max_gens;
 double lambda;
 std::ostream* verbose_out;
 std::string base_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\";
-std::string file_name = "train_data_small.csv";
+std::string file_name = "train_data_tiny.csv";
 int main ( );
 void crossover ( int &seed );
 void elitist ( );
 void evaluate ( );
 int i4_uniform_ab ( int a, int b, int &seed );
-void initialize ( string filename, int &seed );
+void initialize ( ifstream& input, int &seed );
 void keep_the_best ( );
 void mutate ( int &seed );
 double r8_uniform_ab ( double a, double b, int &seed );
@@ -121,11 +122,10 @@ int main ( )
 		cout << "Writing output to " << file_path << endl;
 	}
   string filename = "C:\\Users\\i-fen\\Documents\\ERF_Project\\forest_init_config.txt";
-  int generation;
-  int i;
-  int seed;
-
-  timestamp ( );
+  int i, generation, seed;
+  double elapsed_secs;
+  ifstream input;
+  clock_t begin, end;
 
   if ( NVARS < 2 )
   {
@@ -135,18 +135,27 @@ int main ( )
   }
   seed = 12345678;
 
-  initialize ( filename, seed );
-  evaluate ( );
-  keep_the_best ( );
-  report(0);
-  for ( generation = 0; generation < max_gens; generation++ )
-  {
-    selector ( seed );
-    crossover ( seed );
-    mutate ( seed );
-    report ( generation + 1 );
-    evaluate ( );
-    elitist ( );
+  input.open(filename.c_str());
+  cout << "Working";
+  while (!input.eof()) {
+	  cout << ".";
+	  timestamp();
+	  begin = clock();
+	  initialize(input, seed);
+	  evaluate();
+	  keep_the_best();
+	  report(0);
+	  for (generation = 0; generation < max_gens; generation++) {
+		  selector(seed);
+		  crossover(seed);
+		  mutate(seed);
+		  report(generation + 1);
+		  evaluate();
+		  elitist();
+	  }
+	  end = clock();
+	  elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+	  *verbose_out << "Elapsed time: " << elapsed_secs << " seconds" << endl << endl;
   }
 
   /**verbose_out << "\n";
@@ -163,13 +172,10 @@ int main ( )
 //
 //  Terminate.
 //
-  *verbose_out << "\n";
-  *verbose_out << "SIMPLE_GA:\n";
-  *verbose_out << "  Normal end of execution.\n";
-  *verbose_out << "\n";
-  timestamp ( );
+  timestamp();
+  input.close();
   char a;
-  cout << "Time to say goodbye!" << endl;
+  cout << "done." << endl << "Have a good day!" << endl;
   cin >> a;
   return 0;
 }
@@ -524,7 +530,7 @@ int i4_uniform_ab ( int a, int b, int &seed )
 }
 //****************************************************************************80
 
-void initialize ( string filename, int &seed )
+void initialize ( ifstream& input, int &seed )
 
 //****************************************************************************80
 // 
@@ -564,11 +570,8 @@ void initialize ( string filename, int &seed )
 //    Input/output, int &SEED, a seed for the random number generator.
 //
 {
-  ifstream input;
   double lbound;
   double ubound;
-
-  input.open ( filename.c_str ( ) );
 
 
   if ( !input )
@@ -602,28 +605,6 @@ void initialize ( string filename, int &seed )
       population[j].gene[i] = uint(r8_uniform_ab ( lbound, ubound, seed ));
     }
   }
-
-  input.close();
-  //char pop_size[10];
-  //sprintf(pop_size, "%d", pop_size);
-  //char * args[] = { "ranger", // dummy argument
-	 // "--verbose",
-	 // "--file",
-	 // file_path,
-	 // "--depvarname",
-	 // "\"label\"",
-	 // "--treetype",
-	 // "1",
-	 // "--ntree",
-	 // pop_size,
-	 // "--write",
-	 // "--outprefix",
-	 // "GARF" };
-  //int argc = sizeof(args) / sizeof(*args) ;
-  //// remove unwanted appending char
-
-  //args[argc-1] = "";
-  //forest = rf(argc, args, population);
 }
 //****************************************************************************80
 

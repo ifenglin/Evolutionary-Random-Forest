@@ -32,7 +32,7 @@ endif()
 ## ======================================================================================##
 ## Subdirectories and source files
 ## ======================================================================================##
-include_directories(src src/utility src/Forest src/Tree src/mingw-std-threads)
+include_directories(src src/utility src/Forest src/Tree src/mingw-std-threads C:/Boost/include/boost-1_64)
 file(GLOB_RECURSE SOURCES src/*.cpp)
 
 ## ======================================================================================##

@@ -30,7 +30,7 @@ size_t pop_size, max_gens;
 double lambda;
 std::ostream* verbose_out;
 std::string base_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\";
-std::string file_name = "train_data_tiny.csv";
+std::string file_name = "train_data_small.csv";
 int main ( );
 void crossover ( int &seed );
 void elitist ( );
@@ -136,9 +136,7 @@ int main ( )
   seed = 12345678;
 
   input.open(filename.c_str());
-  cout << "Working";
   while (!input.eof()) {
-	  cout << ".";
 	  timestamp();
 	  begin = clock();
 	  initialize(input, seed);
@@ -396,7 +394,6 @@ void evaluate ( )
 		"--outprefix",
 		"GARF" };
 	int argc = sizeof(args) / sizeof(*args);
-	// remove unwanted appending char
 
 	forest = rf(argc, args, population);
 	double prediction_error, max_correlation;

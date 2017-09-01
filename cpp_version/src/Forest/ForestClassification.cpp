@@ -209,7 +209,7 @@ void ForestClassification::computePredictionErrorInternal() {
   std::vector<size_t> i_oob_sampleIDs;
   std::vector<size_t> j_oob_sampleIDs;
   double true_value, correlation_rate;
-  size_t correlated_count, uncorrelated_count;
+  size_t correlated_count, uncorrelated_count, size_intersection;
   for (size_t i = 0; i < num_trees; ++i) {
 	  for (size_t j = i + 1; j < num_trees; ++j) {
 		  correlated_count = 0;
@@ -217,7 +217,8 @@ void ForestClassification::computePredictionErrorInternal() {
 		  i_oob_sampleIDs = trees[i]->getOobSampleIDs();
 		  j_oob_sampleIDs = trees[j]->getOobSampleIDs();
 		  std::set_intersection(i_oob_sampleIDs.begin(), i_oob_sampleIDs.end(), j_oob_sampleIDs.begin(), j_oob_sampleIDs.end(), std::back_inserter(intersected_oob_sampleIDs));
-		  for (size_t sample_idx = 0; sample_idx < intersected_oob_sampleIDs.size(); ++sample_idx) {
+		  size_intersection = intersected_oob_sampleIDs.size();
+		  for (size_t sample_idx = 0; sample_idx < size_intersection; ++sample_idx) {
 			  size_t sampleID = intersected_oob_sampleIDs[sample_idx];
 			  true_value = data->get(sampleID, dependent_varID);
 			  if (predictions_each_tree[0][i][sampleID] != predictions_each_tree[0][j][sampleID]) {

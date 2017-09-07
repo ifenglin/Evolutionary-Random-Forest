@@ -879,8 +879,8 @@ void report ( int generation )
   *verbose_out << "  " << setw(8) << generation 
        << "  " << setw(14) << best_val 
        << "  " << setw(14) << avg 
-       << "  " << setw(14) << forest->getOverallPredictionError()
-	   << "  " << setw(14) << stddev 
+	   << "  " << setw(14) << stddev
+	   << "  " << setw(14) << forest->getOverallPredictionError()
 	   << "  " << setw(14) << forest->getOverallCorrelation()
 	   << "\n";
 

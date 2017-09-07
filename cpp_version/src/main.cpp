@@ -10,7 +10,7 @@
 # include <cstring>
 # include <ctime>
 # include "rf.h"
-
+#include <algorithm> 
 using namespace std;
 
 //
@@ -28,13 +28,14 @@ genotype newpopulation[MAX_POP_SIZE];
 Forest* forest;
 size_t pop_size, max_gens;
 double lambda;
-std::ostream* verbose_out;
+std::vector<int> pop_series;
+std::ostream *verbose_out, *trees_out;
 std::string base_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\";
-std::string file_name = "train_data_small.csv";
+std::string input_file_path;
 int main ( );
 void crossover ( int &seed );
 void elitist ( );
-void evaluate ( );
+void evaluate ( int &seed);
 int i4_uniform_ab ( int a, int b, int &seed );
 void initialize ( ifstream& input, int &seed );
 void keep_the_best ( );
@@ -47,7 +48,7 @@ void Xover ( int one, int two, int &seed );
 
 //****************************************************************************80
 
-int main ( )
+int main ()
 
 //****************************************************************************80
 //
@@ -108,17 +109,24 @@ int main ( )
 	}
 	else {
 		std::ofstream* logfile = new std::ofstream();
+		std::ofstream* treesfile = new std::ofstream();
 		char filename[20];
-		std::string file_path;
+		char tree_filename[26];
+		std::string file_path, tree_file_path;
 		time_t t = time(0);
 		strftime(filename, sizeof(filename), "%Y%m%d%H%M%S", gmtime(&t));
+		strftime(tree_filename, sizeof(filename), "%Y%m%d%H%M%S", gmtime(&t));
 		strcat(filename, ".txt");
+		strcat(tree_filename, "_trees.txt");
 		file_path = base_path + std::string(filename);
+		tree_file_path = base_path + std::string(tree_filename);
 		logfile->open(file_path);
+		treesfile->open(tree_file_path);
 		if (!logfile->good()) {
 			throw std::runtime_error("Could not write to logfile.");
 		}
 		verbose_out = logfile;
+		trees_out = treesfile;
 		cout << "Writing output to " << file_path << endl;
 	}
   string filename = "C:\\Users\\i-fen\\Documents\\ERF_Project\\forest_init_config.txt";
@@ -134,21 +142,21 @@ int main ( )
     *verbose_out << "  since it requires 2 <= NVARS.\n";
   }
   seed = 12345678;
-
   input.open(filename.c_str());
   while (!input.eof()) {
 	  timestamp();
 	  begin = clock();
 	  initialize(input, seed);
-	  evaluate();
+	  evaluate(seed);
 	  keep_the_best();
 	  report(0);
-	  for (generation = 0; generation < max_gens; generation++) {
+	  for (generation = 0; generation < max_gens; ++generation) {
+		  ++seed;
 		  selector(seed);
 		  crossover(seed);
 		  mutate(seed);
 		  report(generation + 1);
-		  evaluate();
+		  evaluate(seed);
 		  elitist();
 	  }
 	  end = clock();
@@ -172,9 +180,7 @@ int main ( )
 //
   timestamp();
   input.close();
-  char a;
   cout << "done." << endl << "Have a good day!" << endl;
-  cin >> a;
   return 0;
 }
 //****************************************************************************80
@@ -348,7 +354,7 @@ void elitist ( )
 }
 //****************************************************************************80
 
-void evaluate ( )
+void evaluate ( int& seed)
 
 //****************************************************************************80
 // 
@@ -375,11 +381,12 @@ void evaluate ( )
 //    This C++ version by John Burkardt.
 //
 {
-	char pop_size_char[6];
-	char file_path_char[100];
+	char pop_size_char[4];
+	char file_path_char[512];
+	char seed_char[8];
 	sprintf(pop_size_char, "%d", pop_size);
-	std::string file_path  = base_path + file_name;
-	strcpy(file_path_char, file_path.c_str());
+	sprintf(seed_char, "%d", seed);
+	strcpy(file_path_char, input_file_path.c_str());
 	char * args[] = { "ranger", // dummy argument
 		//"--verbose",
 		"--file",
@@ -390,10 +397,13 @@ void evaluate ( )
 		"1",
 		"--ntree",
 		pop_size_char,
+		"--seed",
+		seed_char,
 		"--write",
 		"--outprefix",
 		"GARF" };
 	int argc = sizeof(args) / sizeof(*args);
+
 
 	forest = rf(argc, args, population);
 	double prediction_error, max_correlation;
@@ -579,7 +589,9 @@ void initialize ( ifstream& input, int &seed )
     exit ( 1 );
   }
 //  Initialize hyper parameters
+  input >> input_file_path;
   input >> max_gens >> pop_size >> lambda;
+  *verbose_out << "Input file: " << input_file_path << endl;
   *verbose_out << "Max generations: " << max_gens << endl;
   *verbose_out << "Population size: " << pop_size << endl;
   *verbose_out << "Lambda         : " << lambda << endl;
@@ -588,7 +600,7 @@ void initialize ( ifstream& input, int &seed )
 // 
 //  Initialize variables within the bounds 
 //
-  for ( size_t i = 0; i < NVARS; i++ )
+  for ( size_t i = 0; i < NVARS; ++i )
   {
     input >> lbound >> ubound;
 	*verbose_out << "   " << i + 1 << ": [" << lbound << ", " << ubound << "]" << endl;
@@ -601,6 +613,11 @@ void initialize ( ifstream& input, int &seed )
       population[j].upper[i]= ubound;
       population[j].gene[i] = uint(r8_uniform_ab ( lbound, ubound, seed ));
     }
+  }
+
+  // initilize pop series
+  for ( size_t i = 0; i < pop_size; ++i) {
+	  pop_series.push_back(i);
   }
 }
 //****************************************************************************80
@@ -867,6 +884,16 @@ void report ( int generation )
 	   << "  " << setw(14) << forest->getOverallCorrelation()
 	   << "\n";
 
+  // print trees
+  *trees_out << "%" << generation << "th generation" << endl;
+  for (size_t i = 0; i < pop_size; i++) {
+	  for (size_t j = 0; j < NVARS; j++) {
+		  *trees_out << population[i].gene[j];
+		  *trees_out << ' ';
+	  }
+	  *trees_out << population[i].fitness;
+	  *trees_out << endl;
+  }
   return;
 }
 //****************************************************************************80
@@ -906,7 +933,11 @@ void selector ( int &seed )
   const double b = 1.0;
   int i;
   int j;
+  int k;
+  int picked;
+  int winner;
   int mem;
+  int tournament_size;
   double p;
   double sum;
 //
@@ -920,41 +951,59 @@ void selector ( int &seed )
 //
 //  Calculate the relative fitness of each member.
 //
-  for ( mem = 0; mem < pop_size; mem++ )
-  {
-    population[mem].rfitness = population[mem].fitness / sum;
+  //for ( mem = 0; mem < pop_size; mem++ )
+  //{
+  //  population[mem].rfitness = population[mem].fitness / sum;
+  //}
+
+  // tournament selection
+  tournament_size = int(pop_size/2);
+  std::srand(seed);
+  for (mem = 0; mem < pop_size; mem++) {
+	  std::random_shuffle(pop_series.begin(), pop_series.end());
+	  for (k = 0; k < tournament_size; k++) {
+		  picked = pop_series.at(k);
+	      if (k == 0 || population[picked].fitness > population[winner].fitness) {
+			  winner = picked;
+		  }
+	  }
+	  newpopulation[mem] = population[winner];
   }
+  
+
 // 
-//  Calculate the cumulative fitness.
-//
-  population[0].cfitness = population[0].rfitness;
-  for ( mem = 1; mem < pop_size; mem++ )
-  {
-    population[mem].cfitness = population[mem-1].cfitness +       
-      population[mem].rfitness;
-  }
+////  Calculate the cumulative fitness.
+////
+//  population[0].cfitness = population[0].rfitness;
+//  for ( mem = 1; mem < pop_size; mem++ )
+//  {
+//    population[mem].cfitness = population[mem-1].cfitness +       
+//      population[mem].rfitness;
+//  }
+//// 
+////  Select survivors using cumulative fitness. 
+////
+//  for ( i = 0; i < pop_size; i++ )
+//  { 
+//    p = r8_uniform_ab ( a, b, seed );
+//    if ( p < population[0].cfitness )
+//    {
+//      newpopulation[i] = population[0];      
+//    }
+//    else
+//    {
+//      for ( j = 0; j < pop_size; j++ )
+//      { 
+//        if ( population[j].cfitness <= p && p < population[j+1].cfitness )
+//        {
+//          newpopulation[i] = population[j+1];
+//		    break;
+//        }
+//      }
+//    }
+//  }
 // 
-//  Select survivors using cumulative fitness. 
-//
-  for ( i = 0; i < pop_size; i++ )
-  { 
-    p = r8_uniform_ab ( a, b, seed );
-    if ( p < population[0].cfitness )
-    {
-      newpopulation[i] = population[0];      
-    }
-    else
-    {
-      for ( j = 0; j < pop_size; j++ )
-      { 
-        if ( population[j].cfitness <= p && p < population[j+1].cfitness )
-        {
-          newpopulation[i] = population[j+1];
-        }
-      }
-    }
-  }
-// 
+
 //  Overwrite the old population with the new one.
 //
   for ( i = 0; i < pop_size; i++ )

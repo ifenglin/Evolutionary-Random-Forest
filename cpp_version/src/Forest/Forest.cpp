@@ -459,8 +459,9 @@ void Forest::grow() {
         minprop, holdout, num_random_splits);*/
 
 	uint *g = this->genes[i].gene;
-	double sample_fraction = (double)g[2] / (double)num_samples;
 
+	double sample_fraction = (double)g[2] / 1000.0;
+	
 	trees[i]->init(data, (int)g[0], dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
 		tree_split_select_weights, importance_mode, (int)g[1], &no_split_variables, sample_with_replacement,
 		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,

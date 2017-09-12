@@ -140,7 +140,8 @@ public:
   const double getOverallCorrelation() const {
 	  double sum = 0;
 	  for (size_t i = 0; i < num_trees; ++i) {
-		  sum += getAverageCorrelation(i);
+		  //sum += getAverageCorrelation(i);
+		  sum += getMaxCorrelation(i);
 	  }
 	  return sum/num_trees;
   }

@@ -130,10 +130,11 @@ int main ()
 		cout << "Writing output to " << file_path << endl;
 	}
   string filename = "C:\\Users\\i-fen\\Documents\\ERF_Project\\forest_init_config.txt";
-  int i, generation, seed;
+  uint generation;
+  int seed;
   double elapsed_secs;
   ifstream input;
-  clock_t begin, end;
+  clock_t begin, end, time_check1, time_check2;
 
   if ( NVARS < 2 )
   {
@@ -217,7 +218,7 @@ void crossover ( int &seed )
 {
   const double a = 0.0;
   const double b = 1.0;
-  int mem = 0;
+  uint mem = 0;
   int one = 0;
   int first = 0;
   double x;
@@ -281,11 +282,8 @@ void elitist ( )
 //    Local, double WORST, the worst fitness value.
 //
 {
-  int i;
-  double best;
-  int best_mem;
-  double worst;
-  int worst_mem;
+  uint i, best_mem = 0, worst_mem = 0;
+  double best, worst;
 
   best = population[0].fitness;
   worst = population[0].fitness;
@@ -654,8 +652,7 @@ void keep_the_best ( )
 //
 {
   int cur_best;
-  int mem;
-  int i;
+  uint mem, i;
 
   cur_best = 0;
 
@@ -712,8 +709,7 @@ void mutate ( int &seed )
 {
   const double a = 0.0;
   const double b = 1.0;
-  int i;
-  int j;
+  uint i, j;
   double lbound;
   double ubound;
   double x;
@@ -836,9 +832,9 @@ void report ( int generation )
 //    Local, double sum_square, sum of squares for std calc.
 //
 {
+  uint i;
   double avg;
   double best_val;
-  int i;
   double square_sum;
   double stddev;
   double sum;
@@ -929,16 +925,13 @@ void selector ( int &seed )
 //    Input/output, int &SEED, a seed for the random number generator.
 //
 {
-  const double a = 0.0;
-  const double b = 1.0;
-  int i;
-  int j;
-  int k;
-  int picked;
-  int winner;
-  int mem;
-  int tournament_size;
-  double p;
+  //const double a = 0.0;
+  //const double b = 1.0;
+  uint i, k;
+  //int j;
+  uint picked, winner = 0;
+  uint mem;
+  //double p;
   double sum;
 //
 //  Find the total fitness of the population.
@@ -1044,13 +1037,12 @@ void timestamp ( )
 
   static char time_buffer[TIME_SIZE];
   const struct tm *tm;
-  size_t len;
   time_t now;
 
   now = time ( NULL );
   tm = localtime ( &now );
 
-  len = strftime ( time_buffer, TIME_SIZE, "%d %B %Y %I:%M:%S %p", tm );
+  strftime ( time_buffer, TIME_SIZE, "%d %B %Y %I:%M:%S %p", tm );
 
   *verbose_out << time_buffer << "\n";
 

@@ -1097,15 +1097,26 @@ void Xover ( int one, int two, int &seed )
 // 
 //  Select the crossover point.
 //
-  point = i4_uniform_ab ( 0, NVARS - 1, seed );
+//  point = i4_uniform_ab ( 0, NVARS - 1, seed );
 //
 //  Swap genes in positions 0 through POINT-1.
 //
-  for ( i = 0; i < point; i++ )
+//  for ( i = 0; i < point; i++ )
+//  {
+//    t                       = population[one].gene[i];
+//    population[one].gene[i] = population[two].gene[i];
+//    population[two].gene[i] = t;
+//  }
+
+  // uniform crossover
+  const double xover_rate = 0.5;
+  for (i = 0; i < NVARS; i++)
   {
-    t                       = population[one].gene[i];
-    population[one].gene[i] = population[two].gene[i];
-    population[two].gene[i] = t;
+	  if (r8_uniform_ab(0.0, 1.0, seed) < xover_rate) {
+		  t = population[one].gene[i];
+		  population[one].gene[i] = population[two].gene[i];
+		  population[two].gene[i] = t;
+	  }
   }
   
   return;

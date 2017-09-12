@@ -122,6 +122,7 @@ void Forest::initCpp(std::string dependent_variable_name, MemoryMode memory_mode
   }
 
   // Call other init function
+  // Do not load input file 
   init(dependent_variable_name, memory_mode, NULL, mtry, output_prefix, num_trees, seed, num_threads, importance_mode,
       min_node_size, status_variable_name, prediction_mode, sample_with_replacement, unordered_variable_names,
       memory_saving_splitting, splitrule, predict_all, sample_fraction, alpha, minprop, holdout, prediction_type,
@@ -470,6 +471,8 @@ void Forest::grow() {
       tree_split_select_weights = &split_select_weights[0];
     }
 
+	//Init trees with individual genes instead of unified values
+
     /*trees[i]->init(data, mtry, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
         tree_split_select_weights, importance_mode, min_node_size, &no_split_variables, sample_with_replacement,
         &is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
@@ -477,11 +480,11 @@ void Forest::grow() {
 
 	uint *g = this->genes[i].gene;
 
-	double sample_fraction = (double)g[2] / 1000.0;
+	double sample_fraction_each_tree = (double)g[2] / 1000.0 * sample_fraction;
 	
 	trees[i]->init(data, (int)g[0], dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
 		tree_split_select_weights, importance_mode, (int)g[1], &no_split_variables, sample_with_replacement,
-		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
+		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction_each_tree, alpha,
 		minprop, holdout, num_random_splits); 
   }
 

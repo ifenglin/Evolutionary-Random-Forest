@@ -151,18 +151,36 @@ int main ()
 	  evaluate(seed);
 	  keep_the_best();
 	  report(0);
+	  cout << "breed generations";
 	  for (generation = 0; generation < max_gens; ++generation) {
 		  ++seed;
+		  if (generation == 0) {
+			  time_check1 = clock();
+			  *verbose_out << "initilization time: " << double(time_check1 - begin) / CLOCKS_PER_SEC << "second" << endl;
+		  }
 		  selector(seed);
+		  if (generation == 0) {
+			  time_check2 = clock();
+			  *verbose_out << "selector time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl;
+		  }
 		  crossover(seed);
 		  mutate(seed);
-		  report(generation + 1);
+		  if (generation == 0) {
+			  time_check1 = clock();
+			  *verbose_out << "crossover+mutate time: " << double(time_check1 - time_check2) / CLOCKS_PER_SEC << "second" << endl;
+		  }
 		  evaluate(seed);
+		  if (generation == 0) {
+			  time_check2 = clock();
+			  *verbose_out << "evaluate time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl;
+		  }
+		  report(generation + 1);
 		  elitist();
+		  cout << ".";
 	  }
 	  end = clock();
 	  elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	  *verbose_out << "Elapsed time: " << elapsed_secs << " seconds" << endl << endl;
+	  *verbose_out << "Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
   }
 
   /**verbose_out << "\n";

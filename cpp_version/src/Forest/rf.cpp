@@ -91,9 +91,12 @@ Forest* rf(int argc, char **argv, genotype* genes) {
     *verbose_out << "Starting Ranger." << std::endl;
 	*verbose_out << "Load data for the first time..." << std::endl;
 	static Data* data = forest->loadData(arg_handler.file);
-
-	*verbose_out << "data loaded." << std::endl << "Set data...";
+	*verbose_out << "Set data...";
 	forest->setData(data);
+	*verbose_out << "Load case weights file..." << std::endl;
+	static std::vector<double>* case_weights = forest->loadCaseWeights(arg_handler.caseweights);
+	*verbose_out << "Set case weights..." << std::endl;
+	forest->setCaseWeights(case_weights);
 	*verbose_out << "data set" << std::endl << "Set genes...";
 	forest->setGenes(genes);
 	*verbose_out << "genes set." << std::endl << "Initialize forest...";

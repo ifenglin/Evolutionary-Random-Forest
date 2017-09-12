@@ -27,11 +27,13 @@ genotype population[MAX_POP_SIZE];
 genotype newpopulation[MAX_POP_SIZE];
 Forest* forest;
 size_t pop_size, max_gens;
+size_t tournament_size;
 double lambda;
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
 std::string base_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\";
 std::string input_file_path;
+std::string case_weight_file_path;
 int main ( );
 void crossover ( int &seed );
 void elitist ( );
@@ -199,7 +201,7 @@ int main ()
 //
   timestamp();
   input.close();
-  cout << "done." << endl << "Have a good day!" << endl;
+  cout << "finished." << endl << "Have a good day!" << endl;
   return 0;
 }
 //****************************************************************************80
@@ -399,10 +401,12 @@ void evaluate ( int& seed)
 {
 	char pop_size_char[4];
 	char file_path_char[512];
+	char case_weight_file_path_char[512];
 	char seed_char[8];
 	sprintf(pop_size_char, "%d", pop_size);
 	sprintf(seed_char, "%d", seed);
 	strcpy(file_path_char, input_file_path.c_str());
+	strcpy(case_weight_file_path_char, case_weight_file_path.c_str());
 	char * args[] = { "ranger", // dummy argument
 		//"--verbose",
 		"--file",
@@ -415,6 +419,8 @@ void evaluate ( int& seed)
 		pop_size_char,
 		"--seed",
 		seed_char,
+		"--caseweights",
+		case_weight_file_path_char,
 		"--write",
 		"--outprefix",
 		"GARF" };
@@ -986,7 +992,6 @@ void selector ( int &seed )
   //}
 
   // tournament selection
-  tournament_size = int(pop_size/2);
   std::srand(seed);
   for (mem = 0; mem < pop_size; mem++) {
 	  std::random_shuffle(pop_series.begin(), pop_series.end());

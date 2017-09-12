@@ -86,6 +86,8 @@ public:
   // data loading functions
   Data* loadData(std::string input_file);
   void setData(Data* data);
+  std::vector<double>* loadCaseWeights(std::string input_file);
+  void setCaseWeights(std::vector<double>* data);
 
   // gene bank functions
   void setGenes(genotype* genes);

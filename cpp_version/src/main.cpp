@@ -587,36 +587,54 @@ void initialize ( ifstream& input, int &seed )
     exit ( 1 );
   }
 //  Initialize hyper parameters
-  input >> input_file_path;
+  input >> input_file_path >> case_weight_file_path;
   input >> max_gens >> pop_size >> lambda;
   *verbose_out << "Input file: " << input_file_path << endl;
   *verbose_out << "Max generations: " << max_gens << endl;
   *verbose_out << "Population size: " << pop_size << endl;
   *verbose_out << "Lambda         : " << lambda << endl;
   *verbose_out << "N. of variables: " << NVARS << endl;
+  *verbose_out << "N. of features : " << NFEATURES << endl;
   *verbose_out << "Parameter ranges: " << endl;
+  if (!VERBOSE) { // print message if verbose mode for debugging
+	  cout << "Max generations: " << max_gens << endl;
+	  cout << "Population size: " << pop_size << endl;
+	  cout << "Lambda         : " << lambda << endl;
+	  cout << "N. of variables: " << NVARS << endl;
+	  cout << "N. of features : " << NFEATURES << endl;
+  }
 // 
 //  Initialize variables within the bounds 
 //
   for ( size_t i = 0; i < NVARS; ++i )
   {
-    input >> lbound >> ubound;
-	*verbose_out << "   " << i + 1 << ": [" << lbound << ", " << ubound << "]" << endl;
-    for ( size_t j = 0; j < pop_size; j++ )
-    {
-      population[j].fitness = 0;
-      population[j].rfitness = 0;
-      population[j].cfitness = 0;
-      population[j].lower[i] = lbound;
-      population[j].upper[i]= ubound;
-      population[j].gene[i] = uint(r8_uniform_ab ( lbound, ubound, seed ));
-    }
+	  if (i < NFEATURES) {
+		  input >> lbound >> ubound;
+		  *verbose_out << "   " << i + 1 << ": [" << lbound << ", " << ubound << "]" << endl;
+	  }
+	  else {
+		  // bounds for select weights
+		  lbound = 1;
+		  ubound = 999;
+	  }
+      for ( size_t j = 0; j < pop_size; j++ ) {
+		  if (i == 0) {
+			  population[j].fitness = 0;
+			  //population[j].rfitness = 0;
+			  //population[j].cfitness = 0;
+	      }
+		  population[j].lower[i] = lbound;
+		  population[j].upper[i] = ubound;
+          population[j].gene[i] = uint(r8_uniform_ab ( lbound, ubound, seed ));
+      }
   }
 
   // initilize pop series
   for ( size_t i = 0; i < pop_size; ++i) {
 	  pop_series.push_back(i);
   }
+  // set tournament size
+  tournament_size = int(floor(sqrt(pop_size)));
 }
 //****************************************************************************80
 

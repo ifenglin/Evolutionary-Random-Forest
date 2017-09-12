@@ -144,15 +144,32 @@ void Forest::initCpp(std::string dependent_variable_name, MemoryMode memory_mode
       throw std::runtime_error("Number of split select weights is not equal to number of independent variables.");
     }
     setSplitWeightVector(split_select_weights);
+  } else {
+	  // set select weights with genes
+	  std::vector<std::vector<double>> split_select_weights;
+	  split_select_weights.resize(num_trees);
+	  // number of genes = NVARS (but not available here)
+	  uint n_genes = sizeof(this->genes[0].gene) / sizeof(this->genes[0].gene[0]);
+	  // set split weight vector only if number of variables > number of genes
+	  if (n_genes > num_independent_variables) {
+		  uint split_weight_begin_idx = n_genes - num_independent_variables;
+		  for (size_t i = 0; i < num_trees; ++i) {
+			  uint *g = this->genes[i].gene;
+			  for (size_t j = split_weight_begin_idx; j < n_genes; ++j) {
+				  split_select_weights[i].push_back((double)g[j] / 1000.0);
+			  }
+		  }
+		  setSplitWeightVector(split_select_weights);
+	  }
   }
-
+  // Ignore case weights input file: use loadCaseWeights and setCaseWeights instead
   // Load case weights from file
-  if (!case_weights_file.empty()) {
+ /* if (!case_weights_file.empty()) {
     loadDoubleVectorFromFile(case_weights, case_weights_file);
-    if (case_weights.size() != num_samples - 1) {
+    if (case_weights.size() != num_samples) {
       throw std::runtime_error("Number of case weights is not equal to number of samples.");
     }
-  }
+  }*/
 
   // Sample from non-zero weights in holdout mode
   if (holdout && !case_weights.empty()) {

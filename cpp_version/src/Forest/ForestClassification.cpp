@@ -114,9 +114,9 @@ void ForestClassification::predictInternal() {
 
   size_t num_prediction_samples = data->getNumRows();
   if (predict_all || prediction_type == TERMINALNODES) {
-    predictions = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_prediction_samples, std::vector<double>(num_trees)));
+    predictions = std::vector<std::vector<std::vector<unsigned>>>(1, std::vector<std::vector<unsigned>>(num_prediction_samples, std::vector<unsigned>(num_trees)));
   } else {
-    predictions = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(1, std::vector<double>(num_prediction_samples)));
+    predictions = std::vector<std::vector<std::vector<unsigned>>>(1, std::vector<std::vector<unsigned>>(1, std::vector<unsigned>(num_prediction_samples)));
   }
 
   // For all samples get tree predictions
@@ -181,14 +181,17 @@ void ForestClassification::computePredictionErrorInternal() {
 
   // Compute majority vote for each sample
   *verbose_out << "-Computing majority..";
-  predictions = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(1, std::vector<double>(num_samples)));
+  predictions = std::vector<std::vector<std::vector<unsigned>>>(1, std::vector<std::vector<unsigned>>(1, std::vector<unsigned>(num_samples)));
   try {
 	  for (size_t i = 0; i < num_samples; ++i) {
 		  if (!class_counts[i].empty()) {
 			  predictions[0][0][i] = mostFrequentValue(class_counts[i], random_number_generator);
 		  }
 		  else {
-			  predictions[0][0][i] = NAN;
+        // for double type prediction:
+			  //predictions[0][0][i] = NAN;
+        // for unsigned type prediction:
+			  predictions[0][0][i] = 0;
 		  }
 	  }
   } catch (const std::bad_alloc &e) {
@@ -200,11 +203,14 @@ void ForestClassification::computePredictionErrorInternal() {
   size_t num_missclassifications = 0;
   size_t num_predictions = 0;
   try {
-	  size_t i, tree_idx;
+	  size_t i;
 	  double predicted_value, real_value;
 	  for ( i = 0; i < predictions[0][0].size(); ++i) {
 		  predicted_value = predictions[0][0][i];
-		  if (!std::isnan(predicted_value)) {
+      // for double type prediction:
+		  //if (!std::isnan(predicted_value)) {
+      // for unsigned type prediction:
+		  if(predicted_value != 0) {
 			  ++num_predictions;
 			  real_value = data->get(i, dependent_varID);
 			  if (predicted_value != real_value) {

@@ -23,10 +23,9 @@ using namespace std;
 //  cfitness: the cumulative fitness.
 //
 
-genotype population[MAX_POP_SIZE];
-genotype newpopulation[MAX_POP_SIZE];
+std::vector<genotype> population, newpopulation;
 Forest* forest;
-size_t pop_size, max_gens;
+size_t pop_size, max_gens, n_vars, n_features;
 size_t tournament_size;
 double lambda;
 std::vector<int> pop_series;
@@ -96,7 +95,7 @@ int main ()
 //
 //    max_gens is the maximum number of generations.
 //
-//    NVARS is the number of problem variables.
+//    n_vars is the number of problem variables.
 //
 //    PMUTATION is the probability of mutation.
 //
@@ -137,13 +136,6 @@ int main ()
   double elapsed_secs;
   ifstream input;
   clock_t begin, end, time_check1, time_check2;
-
-  if ( NVARS < 2 )
-  {
-    *verbose_out << "\n";
-    *verbose_out << "  The crossover modification will not be available,\n";
-    *verbose_out << "  since it requires 2 <= NVARS.\n";
-  }
   seed = 12345678;
   input.open(filename.c_str());
   while (!input.eof()) {
@@ -172,20 +164,10 @@ int main ()
 	  }
 	  end = clock();
 	  elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+	  population.clear();
+	  newpopulation.clear();
 	  *verbose_out << "Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
   }
-
-  /**verbose_out << "\n";
-  *verbose_out << "  Best member after " << max_gens << " generations:\n";
-  *verbose_out << "\n";
-
-  for ( i = 0; i < NVARS; i++ )
-  {
-    *verbose_out << "  var(" << i << ") = " << population[pop_size].gene[i] << "\n";
-  }
-
-  *verbose_out << "\n";
-  *verbose_out << "  Best fitness = " << population[pop_size].fitness << "\n";*/
 //
 //  Terminate.
 //
@@ -343,7 +325,7 @@ void elitist ( )
 //
   if ( population[pop_size].fitness <= best )
   {
-    for ( i = 0; i < NVARS; i++ )
+    for ( i = 0; i < n_vars; i++ )
     {
       population[pop_size].gene[i] = population[best_mem].gene[i];
     }
@@ -351,7 +333,7 @@ void elitist ( )
   }
   else
   {
-    for ( i = 0; i < NVARS; i++ )
+    for ( i = 0; i < n_vars; i++ )
     {
       population[worst_mem].gene[i] = population[pop_size].gene[i];
     }
@@ -602,27 +584,38 @@ void initialize ( ifstream& input, int &seed )
   }
 //  Initialize hyper parameters
   input >> input_file_path >> case_weight_file_path;
-  input >> max_gens >> pop_size >> lambda;
+  input >> n_vars >> n_features >> max_gens >> pop_size >> lambda;
   *verbose_out << "Input file: " << input_file_path << endl;
   *verbose_out << "Max generations: " << max_gens << endl;
   *verbose_out << "Population size: " << pop_size << endl;
   *verbose_out << "Lambda         : " << lambda << endl;
-  *verbose_out << "N. of variables: " << NVARS << endl;
-  *verbose_out << "N. of features : " << NFEATURES << endl;
+  *verbose_out << "N. of variables: " << n_vars << endl;
+  *verbose_out << "N. of features : " << n_features << endl;
   *verbose_out << "Parameter ranges: " << endl;
   if (!VERBOSE) { // print message if verbose mode for debugging
 	  cout << "Max generations: " << max_gens << endl;
 	  cout << "Population size: " << pop_size << endl;
 	  cout << "Lambda         : " << lambda << endl;
-	  cout << "N. of variables: " << NVARS << endl;
-	  cout << "N. of features : " << NFEATURES << endl;
+	  cout << "N. of variables: " << n_vars << endl;
+	  cout << "N. of features : " << n_features << endl;
   }
+  if (n_vars < 2)
+  {
+	  *verbose_out << "\n";
+	  *verbose_out << "  The crossover modification will not be available,\n";
+	  *verbose_out << "  since it requires 2 <= n_vars.\n";
+  }
+
+//  Initialize population
+//  +1 to store the best individual
+  population = std::vector<genotype>(pop_size + 1, genotype(n_vars));
+  newpopulation = std::vector<genotype>(pop_size + 1, genotype(n_vars));
 // 
 //  Initialize variables within the bounds 
 //
-  for ( size_t i = 0; i < NVARS; ++i )
+  for ( size_t i = 0; i < n_vars; ++i )
   {
-	  if (i < NFEATURES) {
+	  if (i < n_features) {
 		  input >> lbound >> ubound;
 		  *verbose_out << "   " << i + 1 << ": [" << lbound << ", " << ubound << "]" << endl;
 	  }
@@ -632,11 +625,6 @@ void initialize ( ifstream& input, int &seed )
 		  ubound = 999;
 	  }
       for ( size_t j = 0; j < pop_size; j++ ) {
-		  if (i == 0) {
-			  population[j].fitness = 0;
-			  //population[j].rfitness = 0;
-			  //population[j].cfitness = 0;
-	      }
 		  population[j].lower[i] = lbound;
 		  population[j].upper[i] = ubound;
           population[j].gene[i] = uint(r8_uniform_ab ( lbound, ubound, seed ));
@@ -699,7 +687,7 @@ void keep_the_best ( )
 // 
 //  Once the best member in the population is found, copy the genes.
 //
-  for ( i = 0; i < NVARS; i++ )
+  for ( i = 0; i < n_vars; i++ )
   {
     population[pop_size].gene[i] = population[cur_best].gene[i];
   }
@@ -748,7 +736,7 @@ void mutate ( int &seed )
 
   for ( i = 0; i < pop_size; i++ )
   {
-    for ( j = 0; j < NVARS; j++ )
+    for ( j = 0; j < n_vars; j++ )
     {
       x = r8_uniform_ab ( a, b, seed );
       if ( x < PMUTATION )
@@ -876,7 +864,7 @@ void report ( int generation )
   for (size_t i = 0; i < pop_size; ++i)
   {
 	  *verbose_out << i << "(";
-	  for (size_t j = 0; j < NVARS; ++j) {
+	  for (size_t j = 0; j < n_vars; ++j) {
 		  *verbose_out << population[i].gene[j] << ',';
 	  }
 	  *verbose_out << ") " << population[i].fitness << endl;
@@ -915,7 +903,7 @@ void report ( int generation )
   // print trees
   *trees_out << "%" << generation << "th generation" << endl;
   for (size_t i = 0; i < pop_size; i++) {
-	  for (size_t j = 0; j < NVARS; j++) {
+	  for (size_t j = 0; j < n_vars; j++) {
 		  *trees_out << population[i].gene[j];
 		  *trees_out << ' ';
 	  }
@@ -1114,13 +1102,12 @@ void Xover ( int one, int two, int &seed )
 //    Input/output, int &SEED, a seed for the random number generator.
 //
 {
-  int i;
-  int point;
+  size_t i;
   double t;
 // 
 //  Select the crossover point.
 //
-//  point = i4_uniform_ab ( 0, NVARS - 1, seed );
+//  point = i4_uniform_ab ( 0, n_vars - 1, seed );
 //
 //  Swap genes in positions 0 through POINT-1.
 //
@@ -1133,7 +1120,7 @@ void Xover ( int one, int two, int &seed )
 
   // uniform crossover
   const double xover_rate = 0.5;
-  for (i = 0; i < NVARS; i++)
+  for (i = 0; i < n_vars; i++)
   {
 	  if (r8_uniform_ab(0.0, 1.0, seed) < xover_rate) {
 		  t = population[one].gene[i];

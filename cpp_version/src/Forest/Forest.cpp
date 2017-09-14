@@ -112,7 +112,7 @@ void Forest::setCaseWeights(std::vector<double>* case_weights) {
 }
 
 
-void Forest::setGenes(genotype* genes)
+void Forest::setGenes(std::vector<genotype> &genes)
 {
 	this->genes = genes;
 }
@@ -175,9 +175,8 @@ void Forest::initCpp(std::string dependent_variable_name, MemoryMode memory_mode
 	  if (n_genes > num_independent_variables) {
 		  uint split_weight_begin_idx = n_genes - num_independent_variables;
 		  for (size_t i = 0; i < num_trees; ++i) {
-			  uint *g = this->genes[i].gene;
 			  for (size_t j = split_weight_begin_idx; j < n_genes; ++j) {
-				  split_select_weights[i].push_back((double)g[j] / 1000.0);
+				  split_select_weights[i].push_back((double)this->genes[i].gene[j] / 1000.0);
 			  }
 		  }
 		  setSplitWeightVector(split_select_weights);
@@ -498,12 +497,10 @@ void Forest::grow() {
         &is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
         minprop, holdout, num_random_splits);*/
 
-	uint *g = this->genes[i].gene;
-
-	double sample_fraction_each_tree = (double)g[2] / 1000.0 * sample_fraction;
+	double sample_fraction_each_tree = (double)this->genes[i].gene[2] / 1000.0 * sample_fraction;
 	
-	trees[i]->init(data, (int)g[0], dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
-		tree_split_select_weights, importance_mode, (int)g[1], &no_split_variables, sample_with_replacement,
+	trees[i]->init(data, this->genes[i].gene[0], dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
+		tree_split_select_weights, importance_mode, this->genes[i].gene[1], &no_split_variables, sample_with_replacement,
 		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction_each_tree, alpha,
 		minprop, holdout, num_random_splits); 
   }

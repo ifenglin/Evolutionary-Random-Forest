@@ -90,7 +90,7 @@ public:
   void setCaseWeights(std::vector<double>* data);
 
   // gene bank functions
-  void setGenes(genotype* genes);
+  void setGenes(std::vector<genotype> &genes);
 
   // Grow or predict
   void run(bool verbose);
@@ -259,7 +259,7 @@ protected:
 
   
   size_t num_trees;
-  genotype* genes;
+  std::vector<genotype> genes;
   uint mtry;
   uint min_node_size;
   size_t num_variables;

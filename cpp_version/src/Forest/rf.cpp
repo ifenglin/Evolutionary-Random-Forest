@@ -36,7 +36,7 @@
 using namespace std;
 
 
-Forest* rf(int argc, char **argv, genotype* genes) {
+Forest* rf(int argc, char **argv, std::vector<genotype> &genes) {
 	//cout << "Start growing forest: " << endl;
 	//for (int i = 0; i < argc ; i++) {
 	//	cout << argv[i] << " ";
@@ -55,7 +55,7 @@ Forest* rf(int argc, char **argv, genotype* genes) {
     arg_handler.checkArguments();
 	//cout << "arguments checked" << endl;
     // Create forest object
-    switch (arg_handler.treetype) {
+    /*switch (arg_handler.treetype) {
     case TREE_CLASSIFICATION:
       if (arg_handler.probability) {
         forest = new ForestProbability;

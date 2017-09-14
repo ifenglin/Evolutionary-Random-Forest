@@ -32,6 +32,7 @@
 #include <vector>
 #include <random>
 #include <iostream>
+#include <algorithm>
 
 #include "globals.h"
 #include "Data.h"
@@ -77,6 +78,15 @@ public:
   const std::vector<size_t>& getOobSampleIDs() const {
     return oob_sampleIDs;
   }
+
+  const bool isOobSample(const size_t sampleID) const {
+	  return std::find(oob_sampleIDs.begin(), oob_sampleIDs.end(), sampleID) != oob_sampleIDs.end();
+  }
+
+  size_t findOobSample(const size_t sampleID) const {
+	  return std::distance(oob_sampleIDs.begin(), std::find(oob_sampleIDs.begin(), oob_sampleIDs.end(), sampleID));
+  }
+
   size_t getNumSamplesOob() const {
     return num_samples_oob;
   }

@@ -184,12 +184,12 @@ public:
 	  return c;
 	  
   }
-  const std::vector<std::vector<std::vector<unsigned>> >& getPredictions() const {
+  const std::vector<std::vector< std::unordered_map<size_t, unsigned> > >& getPredictions() const {
     return predictions;
   }
-  const std::vector<std::vector<std::vector<unsigned>> >& getPredictionsEachTree() const {
-	  return predictions_each_tree;
-  }
+  //const std::vector<std::vector<std::vector<unsigned>> >& getPredictionsEachTree() const {
+	 // return predictions_each_tree;
+  //}
   size_t getDependentVarId() const {
     return dependent_varID;
   }
@@ -300,8 +300,9 @@ protected:
   std::vector<Tree*> trees;
   Data* data;
 
-  std::vector<std::vector<std::vector<unsigned>>> predictions;
-  std::vector<std::vector<std::vector<unsigned>>> predictions_each_tree;
+  std::vector<std::vector<std::unordered_map<size_t, unsigned>>> predictions;
+  //std::vector<std::vector<std::vector<unsigned>>> predictions;
+  //std::vector<std::vector<std::vector<unsigned>>> predictions_each_tree;
   std::vector<std::vector<std::vector<double>>> correlation_each_tree;
   double overall_prediction_error;
   std::vector<double> prediction_error_each_tree;

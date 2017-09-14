@@ -137,7 +137,13 @@ public:
     return prediction_error_each_tree;
   }
   const double getPredictionErrorOfTree(size_t tree_idx) const {
-    return prediction_error_each_tree.at(tree_idx);
+	  double p = 0;
+	  try{
+		  p = prediction_error_each_tree.at(tree_idx);
+	  } catch (const std::bad_alloc &e) {
+		  std::cout << "Allocation failed at getPredictionErrorOfTree(" << tree_idx << "): " << e.what() << std::endl;
+	  }
+	  return p;
   }
   const double getOverallCorrelation() const {
 	  double sum = 0;
@@ -148,13 +154,35 @@ public:
 	  return sum/num_trees;
   }
   const double getAverageCorrelation(size_t tree_idx) const {
-	  return std::accumulate(correlation_each_tree[0][tree_idx].begin(), correlation_each_tree[0][tree_idx].end(), 0.0f)/num_trees;
+	  double c = 0;
+	  try {
+		  c = std::accumulate(correlation_each_tree[0][tree_idx].begin(), correlation_each_tree[0][tree_idx].end(), 0.0f) / num_trees;
+	  }
+	  catch (const std::bad_alloc &e) {
+		  std::cout << "Allocation failed at getAverageCorrelation(" << tree_idx << "): " << e.what() << std::endl;
+	  }
+	  return c;
   }
   const double getCorrelation(size_t tree_idx1, size_t tree_idx2) const {
-	  return correlation_each_tree[0][tree_idx1][tree_idx2];
+	  double c = 0;
+	  try {
+		  c = correlation_each_tree[0][tree_idx1][tree_idx2];
+	  }
+	  catch (const std::bad_alloc &e) {
+		  std::cout << "Allocation failed at getCorrelation(" << tree_idx1 << ", " << tree_idx2 << "): " << e.what() << std::endl;
+	  }
+	  return c;
   }
   const double getMaxCorrelation(size_t tree_idx) const {
-	  return *std::max_element(correlation_each_tree[0][tree_idx].begin(), correlation_each_tree[0][tree_idx].end());
+	  double c = 0;
+	  try {
+		  c = *std::max_element(correlation_each_tree[0][tree_idx].begin(), correlation_each_tree[0][tree_idx].end());
+	  }
+	  catch (const std::bad_alloc &e) {
+		  std::cout << "Allocation failed at getMaxCorrelation(" << tree_idx << "): " << e.what() << std::endl;
+	  }
+	  return c;
+	  
   }
   const std::vector<std::vector<std::vector<double>> >& getPredictions() const {
     return predictions;

@@ -98,6 +98,9 @@ void ForestClassification::initInternal(std::string status_variable_name) {
   if (!memory_saving_splitting) {
     data->sort();
   }
+
+  // initialize prediction error of each tree
+  prediction_error_each_tree = std::vector<double>(num_trees);
 }
 
 void ForestClassification::growInternal() {
@@ -143,106 +146,148 @@ void ForestClassification::predictInternal() {
 }
 
 void ForestClassification::computePredictionErrorInternal() {
-
   // Class counts for samples
   std::vector<std::unordered_map<double, size_t>> class_counts;
-  class_counts.reserve(num_samples);
+  //class_counts.reserve(num_samples);
   for (size_t i = 0; i < num_samples; ++i) {
-    class_counts.push_back(std::unordered_map<double, size_t>());
+      class_counts.push_back(std::unordered_map<double, size_t>());
   }
 
   // For each tree loop over OOB samples and count classes
   // record predictions from each tree
-  predictions_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_samples)));
-  for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
-    for (size_t sample_idx = 0; sample_idx < trees[tree_idx]->getNumSamplesOob(); ++sample_idx) {
-      size_t sampleID = trees[tree_idx]->getOobSampleIDs()[sample_idx];
-      double value = ((TreeClassification*) trees[tree_idx])->getPrediction(sample_idx);
-	  predictions_each_tree[0][tree_idx][sampleID] = value;
-      ++class_counts[sampleID][value];
-    }
+  *verbose_out << "-Recording predictions..";
+  //predictions_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_samples)));
+  std::vector<size_t> num_missclassifications_each_tree = std::vector<size_t>(num_trees, 0);
+  //prediction_error_each_tree = std::vector<double>(num_trees);
+  try {
+	  size_t sampleID;
+	  double value, real_value;
+	  for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
+		  for (size_t sample_idx = 0; sample_idx < trees[tree_idx]->getNumSamplesOob(); ++sample_idx) {
+			  sampleID = trees[tree_idx]->getOobSampleIDs()[sample_idx];
+			  value = ((TreeClassification*)trees[tree_idx])->getPrediction(sample_idx);
+			  real_value = data->get(sample_idx, dependent_varID);
+			  ++class_counts[sampleID][value];
+			  //predictions_each_tree[0][tree_idx][sampleID] = value
+			  if (value != real_value) {
+				  ++num_missclassifications_each_tree[tree_idx];
+			  }
+		  }
+		  prediction_error_each_tree[tree_idx] = (double)num_missclassifications_each_tree[tree_idx] / (double)trees[tree_idx]->getNumSamplesOob();
+	  }
+  }  catch (const std::bad_alloc &e) {
+	  std::cout << "Allocation failed when recording prediction of OOB sample: " << e.what() << ". Skipped" << std::endl;
   }
 
   // Compute majority vote for each sample
+  *verbose_out << "-Computing majority..";
   predictions = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(1, std::vector<double>(num_samples)));
-  for (size_t i = 0; i < num_samples; ++i) {
-    if (!class_counts[i].empty()) {
-      predictions[0][0][i] = mostFrequentValue(class_counts[i], random_number_generator);
-    } else {
-      predictions[0][0][i] = NAN;
-    }
+  try {
+	  for (size_t i = 0; i < num_samples; ++i) {
+		  if (!class_counts[i].empty()) {
+			  predictions[0][0][i] = mostFrequentValue(class_counts[i], random_number_generator);
+		  }
+		  else {
+			  predictions[0][0][i] = NAN;
+		  }
+	  }
+  } catch (const std::bad_alloc &e) {
+	  std::cout << "Allocation failed when compute majority vote for prediction: " << e.what() << ". Skipped" << std::endl;
   }
 
   // Compare predictions with true data
+  *verbose_out << "-Comparing predictions..";
   size_t num_missclassifications = 0;
   size_t num_predictions = 0;
-  std::vector<size_t> num_missclassifications_each_tree = std::vector<size_t>(num_trees, 0);
-  for (size_t i = 0; i < predictions[0][0].size(); ++i) {
-    double predicted_value = predictions[0][0][i];
-    if (!std::isnan(predicted_value)) {
-      ++num_predictions;
-      double real_value = data->get(i, dependent_varID);
-      if (predicted_value != real_value) {
-        ++num_missclassifications;
-      }
-      ++classification_table[std::make_pair(real_value, predicted_value)];
-	  // accumulate errors for each tree
-	  for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
-		  predicted_value = predictions_each_tree[0][tree_idx][i];
-		  if (!std::isnan(predicted_value) && predicted_value != real_value) {
-			  ++num_missclassifications_each_tree[tree_idx];
+  try {
+	  size_t i, tree_idx;
+	  double predicted_value, real_value;
+	  for ( i = 0; i < predictions[0][0].size(); ++i) {
+		  predicted_value = predictions[0][0][i];
+		  if (!std::isnan(predicted_value)) {
+			  ++num_predictions;
+			  real_value = data->get(i, dependent_varID);
+			  if (predicted_value != real_value) {
+				  ++num_missclassifications;
+			  }
+			  ++classification_table[std::make_pair(real_value, predicted_value)];
+			  // accumulate errors for each tree
+			  //for ( tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
+				 // //predicted_value = predictions_each_tree[0][tree_idx][i];
+				 // predicted_value = ((TreeClassification*)trees[tree_idx])->getPrediction(i);
+				 // if (predicted_value != 0 && predicted_value != real_value) {
+					//  ++num_missclassifications_each_tree[tree_idx];
+				 // }
+			  //}
 		  }
 	  }
-    }
+  } catch (const std::bad_alloc &e) {
+	  std::cout << "Allocation failed when comparing prediction with sample: " << e.what() << ". Skipped" << std::endl;
   }
+
   overall_prediction_error = (double) num_missclassifications / (double) num_predictions;
 
   //calculate error for each tree
-  prediction_error_each_tree = std::vector<double>(num_trees, 0.0);
-  for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
-	  prediction_error_each_tree[tree_idx] = (double)num_missclassifications_each_tree[tree_idx] / (double)num_predictions;
-  }
+  //*verbose_out << "-Calculating error..";
+  //prediction_error_each_tree = std::vector<double>(num_trees);
+  //try {
+	 // for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
+		//  prediction_error_each_tree[tree_idx] = (double)num_missclassifications_each_tree[tree_idx] / (double)trees[tree_idx]->getNumSamplesOob();
+	 // }
+  //} catch (const std::bad_alloc &e) {
+	 // std::cout << "Allocation failed when calculating error for tree: " << e.what() << ". Skipped" << std::endl;
+  //}
 
   // calculate (directed) correlation
+  *verbose_out << "-Calculating correlation..";
   correlation_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_trees)));
   std::vector<size_t> intersected_oob_sampleIDs;
   std::vector<size_t> i_oob_sampleIDs;
   std::vector<size_t> j_oob_sampleIDs;
-  double true_value, correlation_rate;
-  size_t correlated_count, uncorrelated_count, size_intersection;
-  for (size_t i = 0; i < num_trees; ++i) {
-	  for (size_t j = i + 1; j < num_trees; ++j) {
-		  correlated_count = 0;
-		  uncorrelated_count = 0;
+  double true_value, correlation_rate, predicted_value_i, predicted_value_j;
+  size_t correlated_count, uncorrelated_count, size_intersection, size_downsized_intersection;
+  try {
+	  size_t i, j, sample_idx, sampleID;
+	  for ( i = 0; i < num_trees; ++i) {
 		  i_oob_sampleIDs = trees[i]->getOobSampleIDs();
-		  j_oob_sampleIDs = trees[j]->getOobSampleIDs();
-		  std::set_intersection(i_oob_sampleIDs.begin(), i_oob_sampleIDs.end(), j_oob_sampleIDs.begin(), j_oob_sampleIDs.end(), std::back_inserter(intersected_oob_sampleIDs));
-		  size_intersection = intersected_oob_sampleIDs.size();
-		  for (size_t sample_idx = 0; sample_idx < size_intersection; ++sample_idx) {
-			  size_t sampleID = intersected_oob_sampleIDs[sample_idx];
-			  true_value = data->get(sampleID, dependent_varID);
-			  if (predictions_each_tree[0][i][sampleID] != predictions_each_tree[0][j][sampleID]) {
-				  ++uncorrelated_count;
-			  }
-			  else {
-				  if (predictions_each_tree[0][i][sampleID] != true_value) {
-					  ++correlated_count;
-				  }
-			  }
-		  }
-		  correlation_rate = (double)correlated_count / (double)(correlated_count + uncorrelated_count);
-		  // set correlation only to the tree that has a higher prediction error
-		  if (prediction_error_each_tree[i] < prediction_error_each_tree[j]) {
-			  correlation_each_tree[0][i][j] = 0;
-			  correlation_each_tree[0][j][i] = correlation_rate;
-		  }
-		  else {
-			  correlation_each_tree[0][i][j] = correlation_rate;
-			  correlation_each_tree[0][j][i] = 0;
+		  for ( j = i + 1; j < num_trees; ++j) {
+			correlated_count = 0;
+			uncorrelated_count = 0;
+			j_oob_sampleIDs = trees[j]->getOobSampleIDs();
+			intersected_oob_sampleIDs.clear();
+			std::set_intersection(i_oob_sampleIDs.begin(), i_oob_sampleIDs.end(), j_oob_sampleIDs.begin(), j_oob_sampleIDs.end(), std::back_inserter(intersected_oob_sampleIDs));
+			size_intersection = intersected_oob_sampleIDs.size();
+			// To avoid too much time used in correlation calculation, use the sqrt of number of samples at maximum.
+			size_downsized_intersection = std::min((size_t)(sqrt(num_samples)), size_intersection);
+			for ( sample_idx = 0; sample_idx < size_downsized_intersection; ++sample_idx) {
+				sampleID = intersected_oob_sampleIDs[sample_idx];
+				true_value = data->get(sampleID, dependent_varID);
+				predicted_value_i = ((TreeClassification*)trees[i])->getPrediction(sampleID);
+				predicted_value_j = ((TreeClassification*)trees[j])->getPrediction(sampleID);
+				if (predicted_value_i != predicted_value_j) {
+					++uncorrelated_count;
+				}
+				else {
+					if (predicted_value_i != true_value) {
+						++correlated_count;
+					}
+				}
+			}
+			correlation_rate = (double)correlated_count / (double)(correlated_count + uncorrelated_count);
+			// set correlation only to the tree that has a higher prediction error
+			if (prediction_error_each_tree[i] < prediction_error_each_tree[j]) {
+				correlation_each_tree[0][i][j] = 0;
+				correlation_each_tree[0][j][i] = correlation_rate;
+			}
+			else {
+				correlation_each_tree[0][i][j] = correlation_rate;
+				correlation_each_tree[0][j][i] = 0;
+			}
 		  }
 	  }
+  } catch (const std::bad_alloc &e) {
+	  std::cout << "Allocation failed when calculating correation between tree: " << e.what() << ". Skipped" << std::endl;
   }
-
 }
 
 // #nocov start

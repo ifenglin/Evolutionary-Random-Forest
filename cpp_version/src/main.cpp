@@ -154,27 +154,17 @@ int main ()
 	  keep_the_best();
 	  report(0);
 	  cout << "breed generations";
+	  time_check1 = clock();
+	  *verbose_out << endl << "Initilization time: " << double(time_check1 - begin) / CLOCKS_PER_SEC << " seconds" << endl;
 	  for (generation = 0; generation < max_gens; ++generation) {
 		  ++seed;
-		  if (generation == 0) {
-			  time_check1 = clock();
-			  *verbose_out << "initilization time: " << double(time_check1 - begin) / CLOCKS_PER_SEC << "second" << endl;
-		  }
 		  selector(seed);
-		  if (generation == 0) {
-			  time_check2 = clock();
-			  *verbose_out << "selector time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl;
-		  }
 		  crossover(seed);
 		  mutate(seed);
-		  if (generation == 0) {
-			  time_check1 = clock();
-			  *verbose_out << "crossover+mutate time: " << double(time_check1 - time_check2) / CLOCKS_PER_SEC << "second" << endl;
-		  }
 		  evaluate(seed);
 		  if (generation == 0) {
 			  time_check2 = clock();
-			  *verbose_out << "evaluate time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl;
+			  *verbose_out << "Evaluation time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl << endl;
 		  }
 		  report(generation + 1);
 		  elitist();
@@ -429,7 +419,7 @@ void evaluate ( int& seed)
 
 	forest = rf(argc, args, population);
 	double prediction_error, max_correlation;
-	for (size_t member = 0; member < pop_size; member++ ) {
+	for (size_t member = 0; member < pop_size; ++member ) {
 		prediction_error = forest->getPredictionErrorOfTree(member);
 		max_correlation = forest->getMaxCorrelation(member);
 		population[member].fitness = max(0.0, 1 - prediction_error - (lambda * max_correlation));

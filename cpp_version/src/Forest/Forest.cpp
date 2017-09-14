@@ -95,12 +95,14 @@ void Forest::setData(Data* data) {
 std::vector<double>* Forest::loadCaseWeights(std::string case_weights_file) {
 	std::vector<double>* loaded_case_weights = new std::vector<double>;
 	if (!case_weights_file.empty()) {
+		std::cout << "Loading case weight file: " << case_weights_file << "...";
 		loadDoubleVectorFromFile(*loaded_case_weights, case_weights_file);
 		size_t num_samples = data->getNumRows();
 		if ((*loaded_case_weights).size() != num_samples) {
 			throw std::runtime_error("Number of case weights is not equal to number of samples.");
 		}
 	}
+	std::cout << "completed." << std::endl;
 	return loaded_case_weights;
 }
 

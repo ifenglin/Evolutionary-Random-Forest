@@ -72,7 +72,8 @@ Forest* rf(int argc, char **argv, genotype* genes) {
     case TREE_PROBABILITY:
       forest = new ForestProbability;
       break;
-    }
+    }*/
+	forest = new ForestClassification;
 
     // Verbose output to logfile if non-verbose mode
     std::ostream* verbose_out;

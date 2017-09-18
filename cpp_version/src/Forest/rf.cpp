@@ -36,7 +36,7 @@
 using namespace std;
 
 
-Forest* rf(int argc, char **argv, std::vector<genotype> &genes) {
+Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data) {
 	//cout << "Start growing forest: " << endl;
 	//for (int i = 0; i < argc ; i++) {
 	//	cout << argv[i] << " ";
@@ -44,6 +44,9 @@ Forest* rf(int argc, char **argv, std::vector<genotype> &genes) {
 	//cout << endl;
   ArgumentHandler arg_handler(argc, argv);
   Forest* forest = 0;
+  static Data* data = 0;
+  static std::vector<double>* case_weights = 0;
+
   try {
 
     // Handle command line arguments
@@ -76,31 +79,40 @@ Forest* rf(int argc, char **argv, std::vector<genotype> &genes) {
 	forest = new ForestClassification;
 
     // Verbose output to logfile if non-verbose mode
-    std::ostream* verbose_out;
+    static std::ostream* verbose_out;
     if (arg_handler.verbose) {
       verbose_out = &std::cout;
     } else {
-      std::ofstream* logfile = new std::ofstream();
-      logfile->open(arg_handler.outprefix + ".log");
-      if (!logfile->good()) {
-        throw std::runtime_error("Could not write to logfile.");
-      }
-      verbose_out = logfile;
+      static std::ofstream* logfile = new std::ofstream();
+	  if (verbose_out != logfile) {
+		  logfile->open(arg_handler.outprefix + "_log.txt");
+		  if (!logfile->good()) {
+			  throw std::runtime_error("Could not write to logfile.");
+		  }
+		  verbose_out = logfile;
+	  }
     }
 
     // Call Ranger
     *verbose_out << "Starting Ranger." << std::endl;
-	*verbose_out << "Load data for the first time..." << std::endl;
-	static Data* data = forest->loadData(arg_handler.file);
+	if (reload_data) {
+		delete data;
+		data = forest->loadData(arg_handler.file);
+		*verbose_out << "Load data...";
+	}
 	*verbose_out << "Set data...";
 	forest->setData(data);
-	*verbose_out << "Load case weights file..." << std::endl;
-	static std::vector<double>* case_weights = forest->loadCaseWeights(arg_handler.caseweights);
-	*verbose_out << "Set case weights..." << std::endl;
+	*verbose_out << "done." << endl;
+	if (reload_data) {
+		delete case_weights;
+		*verbose_out << "Load case weights file...";
+		case_weights = forest->loadCaseWeights(arg_handler.caseweights);
+	}
+	*verbose_out << "Set case weights...";
 	forest->setCaseWeights(case_weights);
-	*verbose_out << "data set" << std::endl << "Set genes...";
+	*verbose_out << "done." << std::endl << "Set genes...";
 	forest->setGenes(genes);
-	*verbose_out << "genes set." << std::endl << "Initialize forest...";
+	*verbose_out << "done." << std::endl << "Initialize forest...";
     forest->initCpp(arg_handler.depvarname, arg_handler.memmode, arg_handler.file, arg_handler.mtry,
         arg_handler.outprefix, arg_handler.ntree, verbose_out, arg_handler.seed, arg_handler.nthreads,
         arg_handler.predict, arg_handler.impmeasure, arg_handler.targetpartitionsize, arg_handler.splitweights,
@@ -121,7 +133,7 @@ Forest* rf(int argc, char **argv, std::vector<genotype> &genes) {
   } catch (std::exception& e) {
     std::cerr << "Error: " << e.what() << " Ranger will EXIT now." << std::endl;
     delete forest;
-    return NULL;
+	forest = NULL;
   }
 
   return forest;

@@ -148,8 +148,7 @@ void ForestClassification::predictInternal() {
 void ForestClassification::computePredictionErrorInternal() {
 
 	// Use a fraction of the samples
-	size_t num_samples_downsized = (size_t)(num_samples/num_trees);
-
+	size_t num_samples_downsized = (size_t)sqrt(num_samples);
 	std::vector<size_t> sampleIDs;
 	std::uniform_int_distribution<size_t> unif_dist(0, num_samples - 1);
 
@@ -173,8 +172,8 @@ void ForestClassification::computePredictionErrorInternal() {
 	  for (size_t tree_idx = 0; tree_idx < num_trees; ++tree_idx) {
 		  for (size_t sample_idx = 0; sample_idx < num_samples_downsized; ++sample_idx) {
 			  size_t sampleID = sampleIDs[sample_idx];
-			  if (trees[tree_idx]->isOobSample(sampleID)) {
-				  size_t sample_idx_tree = trees[tree_idx]->findOobSample(sampleID);
+			  size_t sample_idx_tree = trees[tree_idx]->findOobSample(sampleID);
+			  if (sample_idx_tree != trees[tree_idx]->getNumSamplesOob()) {
 				  double value = ((TreeClassification*)trees[tree_idx])->getPrediction(sample_idx_tree);
 				  double real_value = data->get(sample_idx, dependent_varID);
 			      ++class_counts[sampleID][value];
@@ -260,46 +259,55 @@ void ForestClassification::computePredictionErrorInternal() {
   // calculate (directed) correlation
   *verbose_out << "-Calculating correlation..";
   try {
-	  correlation_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_trees)));
+	  correlation_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_trees, 0.0)));
 	  //std::vector<size_t> intersected_oob_sampleIDs;
-	  std::vector<size_t> i_oob_sampleIDs;
-	  std::vector<size_t> j_oob_sampleIDs;
+	  //std::vector<size_t> i_oob_sampleIDs;
+	  //std::vector<size_t> j_oob_sampleIDs;
 	  for ( size_t i = 0; i < num_trees; ++i) {
-		  i_oob_sampleIDs = trees[i]->getOobSampleIDs();
+		  //i_oob_sampleIDs = trees[i]->getOobSampleIDs();
 		  for ( size_t j = i + 1; j < num_trees; ++j) {
 			size_t correlated_count = 0;
 			size_t uncorrelated_count = 0;
-			j_oob_sampleIDs = trees[j]->getOobSampleIDs();
+			//j_oob_sampleIDs = trees[j]->getOobSampleIDs();
 			//intersected_oob_sampleIDs.clear();
 			//std::set_intersection(i_oob_sampleIDs.begin(), i_oob_sampleIDs.end(), j_oob_sampleIDs.begin(), j_oob_sampleIDs.end(), std::back_inserter(intersected_oob_sampleIDs));
 			for ( size_t sample_idx = 0; sample_idx < num_samples_downsized; ++sample_idx) {
 				size_t sampleID = sampleIDs[sample_idx];
-				if (trees[i]->isOobSample(sampleID) && trees[j]->isOobSample(sampleID)) {
-				//if (std::find(intersected_oob_sampleIDs.begin(), intersected_oob_sampleIDs.end(), sampleID) != intersected_oob_sampleIDs.end()) {
-					size_t true_value = data->get(sampleID, dependent_varID);
-					size_t sample_idx_tree_i = trees[i]->findOobSample(sampleID);
+				// check if sampleID is in oob sample in both trees
+				// stage-wise checking reduces the times of searching
+				// equivalent to the following, but assumably faster when oob samples are more than non-oob samples.
+				// if(std::find(intersected_oob_sampleIDs.begin(), intersected_oob_sampleIDs.end(), sampleID) != intersected_oob_sampleIDs.end()){}
+				size_t sample_idx_tree_i = trees[i]->findOobSample(sampleID);
+				if (sample_idx_tree_i != trees[i]->getNumSamplesOob()) {
 					size_t sample_idx_tree_j = trees[j]->findOobSample(sampleID);
-					double predicted_value_i = ((TreeClassification*)trees[i])->getPrediction(sample_idx_tree_i);
-					double predicted_value_j = ((TreeClassification*)trees[j])->getPrediction(sample_idx_tree_j);
-					if (predicted_value_i != predicted_value_j) {
-						++uncorrelated_count;
-					}
-					else {
-						if (predicted_value_i != true_value) {
-							++correlated_count;
+					if (sample_idx_tree_j != trees[j]->getNumSamplesOob()) {
+						//if (std::find(intersected_oob_sampleIDs.begin(), intersected_oob_sampleIDs.end(), sampleID) != intersected_oob_sampleIDs.end()) {
+						double true_value = data->get(sampleID, dependent_varID);
+						double predicted_value_i = ((TreeClassification*)trees[i])->getPrediction(sample_idx_tree_i);
+						double predicted_value_j = ((TreeClassification*)trees[j])->getPrediction(sample_idx_tree_j);
+						if (predicted_value_i != predicted_value_j) {
+							++uncorrelated_count;
+						}
+						else {
+							if (predicted_value_i != true_value) {
+								++correlated_count;
+							}
 						}
 					}
 				}
 			}
-			double correlation_rate = (double)correlated_count / (double)(correlated_count + uncorrelated_count);
-			// set correlation only to the tree that has a higher prediction error
-			if (prediction_error_each_tree[i] < prediction_error_each_tree[j]) {
-				correlation_each_tree[0][i][j] = 0;
-				correlation_each_tree[0][j][i] = correlation_rate;
-			}
-			else {
-				correlation_each_tree[0][i][j] = correlation_rate;
-				correlation_each_tree[0][j][i] = 0;
+			size_t total_count = correlated_count + uncorrelated_count;
+			if (total_count != 0) {
+				double correlation_rate = (double)correlated_count / (double)(total_count);
+				// set correlation only to the tree that has a higher prediction error
+				if (prediction_error_each_tree[i] < prediction_error_each_tree[j]) {
+					correlation_each_tree[0][i][j] = 0.0;
+					correlation_each_tree[0][j][i] = correlation_rate;
+				}
+				else {
+					correlation_each_tree[0][i][j] = correlation_rate;
+					correlation_each_tree[0][j][i] = 0.0;
+				}
 			}
 		  }
 	  }
@@ -316,7 +324,7 @@ void ForestClassification::writeOutputInternal() {
 void ForestClassification::writeConfusionFile() {
 
   // Open confusion file for writing
-  std::string filename = output_prefix + ".confusion";
+  std::string filename = output_prefix + "_confusion.txt";
   std::ofstream outfile;
   outfile.open(filename, std::ios::out);
   if (!outfile.good()) {

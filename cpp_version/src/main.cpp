@@ -23,20 +23,23 @@ using namespace std;
 //  cfitness: the cumulative fitness.
 //
 
-std::vector<genotype> population, newpopulation;
+std::vector<genotype> population, newpopulation, bestpopulation;
 Forest* forest;
-size_t pop_size, max_gens, n_vars, n_features;
+bool reload_data;
+size_t pop_size, max_gens, n_vars, n_features, best_gen;
 size_t tournament_size;
-double lambda;
+double lambda, averageFitness, bestAverageFitness, overallPredictionError, overallCorrelation;
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
-std::string base_path = "C:\\Users\\i-fen\\Documents\\ERF_Project\\";
+char filename[20];
+std::string base_path = "D:\\ERF_Project\\logs\\";
 std::string input_file_path;
 std::string case_weight_file_path;
-int main ( );
+int main (int argc, char* argv[]);
 void crossover ( int &seed );
 void elitist ( );
-void evaluate ( int &seed);
+void saiyajin( size_t gen );
+bool evaluate ( int &seed );
 int i4_uniform_ab ( int a, int b, int &seed );
 void initialize ( ifstream& input, int &seed );
 void keep_the_best ( );
@@ -49,7 +52,7 @@ void Xover ( int one, int two, int &seed );
 
 //****************************************************************************80
 
-int main ()
+int main (int argc, char* argv[])
 
 //****************************************************************************80
 //
@@ -104,76 +107,70 @@ int main ()
 //    PXOVER is the probability of crossover.                          
 //
 {
-	// Verbose output to logfile if non-verbose mode
-	if (VERBOSE) {
-		verbose_out = &std::cout;
+	if (argc > 1) {
+		std::vector<genotype> NullPointer;
+		rf(argc, argv, NullPointer, true);
 	}
-	else {
-		std::ofstream* logfile = new std::ofstream();
-		std::ofstream* treesfile = new std::ofstream();
-		char filename[20];
-		char tree_filename[26];
-		std::string file_path, tree_file_path;
-		time_t t = time(0);
-		strftime(filename, sizeof(filename), "%Y%m%d%H%M%S", gmtime(&t));
-		strftime(tree_filename, sizeof(filename), "%Y%m%d%H%M%S", gmtime(&t));
-		strcat(filename, ".txt");
-		strcat(tree_filename, "_trees.txt");
-		file_path = base_path + std::string(filename);
-		tree_file_path = base_path + std::string(tree_filename);
-		logfile->open(file_path);
-		treesfile->open(tree_file_path);
-		if (!logfile->good()) {
-			throw std::runtime_error("Could not write to logfile.");
-		}
-		verbose_out = logfile;
-		trees_out = treesfile;
-		cout << "Writing output to " << file_path << endl;
-	}
-  string filename = "C:\\Users\\i-fen\\Documents\\ERF_Project\\forest_init_config.txt";
-  uint generation;
-  int seed;
-  double elapsed_secs;
-  ifstream input;
-  clock_t begin, end, time_check1, time_check2;
-  seed = 12345678;
-  input.open(filename.c_str());
-  while (!input.eof()) {
-	  timestamp();
-	  begin = clock();
-	  initialize(input, seed);
-	  evaluate(seed);
-	  keep_the_best();
-	  report(0);
-	  cout << "breed generations";
-	  time_check1 = clock();
-	  *verbose_out << endl << "Initilization time: " << double(time_check1 - begin) / CLOCKS_PER_SEC << " seconds" << endl;
-	  for (generation = 0; generation < max_gens; ++generation) {
-		  ++seed;
-		  selector(seed);
-		  crossover(seed);
-		  mutate(seed);
+	else{
+	  string config_filename = "C:\\Users\\i-fen\\Documents\\ERF_Project\\forest_init_config.txt";
+	  uint generation;
+	  int seed;
+	  double elapsed_secs;
+	  ifstream input;
+	  clock_t begin, end, time_check1, time_check2;
+	  seed = 12345678;
+	  input.open(config_filename.c_str());
+	  reload_data = true;
+	  while (!input.eof()) {
+		  begin = clock();
+		  initialize(input, seed);
+		  timestamp();
 		  evaluate(seed);
-		  if (generation == 0) {
-			  time_check2 = clock();
-			  *verbose_out << "Evaluation time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl << endl;
+		  keep_the_best();
+		  report(0);
+		  saiyajin(0);
+		  reload_data = false;
+		  cout << "breed generations";
+		  time_check1 = clock();
+		  *verbose_out << endl << "Initilization time: " << double(time_check1 - begin) / CLOCKS_PER_SEC << " seconds" << endl;
+		  for (generation = 0; generation < max_gens; ++generation) {
+			  selector(seed);
+			  crossover(seed);
+			  mutate(seed);
+			  if (evaluate(seed)) {
+				  if (generation == 0) {
+					  time_check2 = clock();
+					  *verbose_out << "Evaluation time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl << endl;
+				  }
+				  report(generation + 1);
+				  elitist();
+				  saiyajin(generation + 1);
+				  cout << ".";
+			  }
+			  else {
+				  break;
+			  }
 		  }
-		  report(generation + 1);
-		  elitist();
-		  cout << ".";
+		  end = clock();
+		  elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+		  population = bestpopulation;
+		  evaluate(seed);
+		  population.clear();
+		  newpopulation.clear();
+		  bestpopulation.clear();
+		  reload_data = true;
+		  *verbose_out << "Best average fitness: " << bestAverageFitness << " at generation " << best_gen << endl;
+		  *verbose_out << "Forest and confusion for the best population are generated." << endl;
+		  *verbose_out << "Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
+		  cout << endl;
 	  }
-	  end = clock();
-	  elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	  population.clear();
-	  newpopulation.clear();
-	  *verbose_out << "Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
+	  //
+	  //  Terminate.
+	  //
+	  timestamp();
+	  input.close();
+	  cout << "finished." << endl << "Have a good day!" << endl;
   }
-//
-//  Terminate.
-//
-  timestamp();
-  input.close();
-  cout << "finished." << endl << "Have a good day!" << endl;
   return 0;
 }
 //****************************************************************************80
@@ -342,9 +339,52 @@ void elitist ( )
 
   return;
 }
+void saiyajin(size_t gen)
+
+//****************************************************************************80
+// 
+//  Purpose:
+//
+//    SAIYAJIN stores the best population through evolution
+//
+//  Discussion:
+//
+//    If the current population has a lower prediction error than the previous
+//    one, then store it as the best generation.
+//
+//  Licensing:
+//
+//    This code is distributed under the GNU LGPL license. 
+//
+//  Modified:
+//
+//    29 December 2007
+//
+//  Author:
+//
+//    Original version by Dennis Cormier and Sita Raghavan.
+//    This C++ version by John Burkardt.
+//
+//  Local parameters:
+//
+//    Local, double BEST, the best fitness value.
+//
+//    Local, double WORST, the worst fitness value.
+//
+{
+	if (averageFitness > bestAverageFitness) {
+		for (size_t i = 0; i < pop_size; ++i) {
+			bestpopulation[i] = population[i];
+		}
+		best_gen = gen;
+		bestAverageFitness = averageFitness;
+	}
+
+	return;
+}
 //****************************************************************************80
 
-void evaluate ( int& seed)
+bool evaluate ( int& seed)
 
 //****************************************************************************80
 // 
@@ -375,10 +415,13 @@ void evaluate ( int& seed)
 	char file_path_char[512];
 	char case_weight_file_path_char[512];
 	char seed_char[8];
+	char output_file_path[512];
 	sprintf(pop_size_char, "%d", pop_size);
 	sprintf(seed_char, "%d", seed);
 	strcpy(file_path_char, input_file_path.c_str());
 	strcpy(case_weight_file_path_char, case_weight_file_path.c_str());
+	strcpy(output_file_path, base_path.c_str());
+	strcat(output_file_path, filename);
 	char * args[] = { "ranger", // dummy argument
 		//"--verbose",
 		"--file",
@@ -395,17 +438,31 @@ void evaluate ( int& seed)
 		case_weight_file_path_char,
 		"--write",
 		"--outprefix",
-		"GARF" };
+		output_file_path,
+		"--nthreads",
+	    "8"};
 	int argc = sizeof(args) / sizeof(*args);
 
-
-	forest = rf(argc, args, population);
+	forest = rf(argc, args, population, reload_data);
+	// check if forest is successfully created
 	double prediction_error, max_correlation;
-	for (size_t member = 0; member < pop_size; ++member ) {
-		prediction_error = forest->getPredictionErrorOfTree(member);
-		max_correlation = forest->getMaxCorrelation(member);
-		population[member].fitness = max(0.0, 1 - prediction_error - (lambda * max_correlation));
+	if (forest) {
+		for (size_t member = 0; member < pop_size; ++member) {
+			prediction_error = forest->getPredictionErrorOfTree(member);
+			max_correlation = forest->getMaxCorrelation(member);
+			population[member].fitness = max(0.0, 1 - prediction_error - (lambda * max_correlation));
+		}
+		overallPredictionError = forest->getOverallPredictionError();
+		overallCorrelation = forest->getOverallCorrelation();
+		delete forest;
 	}
+	else {
+		std::cout <<  "*" ;
+		*verbose_out << "Something is wrong. Probably insufficient memory." << endl;
+		return false;
+	}
+	return true;
+	
 }
 //****************************************************************************80
 
@@ -582,6 +639,35 @@ void initialize ( ifstream& input, int &seed )
     cerr << "  Cannot open the input file!\n";
     exit ( 1 );
   }
+
+  // Verbose output to logfile if non-verbose mode
+  if (VERBOSE) {
+	  verbose_out = &std::cout;
+  }
+  else {
+	  std::ofstream* logfile = new std::ofstream();
+	  std::ofstream* treesfile = new std::ofstream();
+	  char report_filename[27];
+	  char tree_filename[26];
+	  std::string file_path, tree_file_path;
+	  time_t t = time(0);
+	  strftime(filename, sizeof(filename), "%Y%m%d%H%M%S", gmtime(&t));
+	  strcpy(report_filename, filename);
+	  strcpy(tree_filename, filename);
+	  strcat(report_filename, "_report.txt");
+	  strcat(tree_filename, "_trees.txt");
+	  file_path = base_path + std::string(report_filename);
+	  tree_file_path = base_path + std::string(tree_filename);
+	  logfile->open(file_path);
+	  treesfile->open(tree_file_path);
+	  if (!logfile->good()) {
+		  throw std::runtime_error("Could not write to logfile.");
+	  }
+	  verbose_out = logfile;
+	  trees_out = treesfile;
+	  cout << "Writing output to " << file_path << endl;
+  }
+
 //  Initialize hyper parameters
   input >> input_file_path >> case_weight_file_path;
   input >> n_vars >> n_features >> max_gens >> pop_size >> lambda;
@@ -610,6 +696,7 @@ void initialize ( ifstream& input, int &seed )
 //  +1 to store the best individual
   population = std::vector<genotype>(pop_size + 1, genotype(n_vars));
   newpopulation = std::vector<genotype>(pop_size + 1, genotype(n_vars));
+  bestpopulation = std::vector<genotype>(pop_size, genotype(n_vars));
 // 
 //  Initialize variables within the bounds 
 //
@@ -636,7 +723,9 @@ void initialize ( ifstream& input, int &seed )
 	  pop_series.push_back(i);
   }
   // set tournament size
-  tournament_size = int(floor(sqrt(pop_size)));
+  tournament_size = int(ceil(pow(pop_size, 0.25)));
+  // 
+  bestAverageFitness = 0;
 }
 //****************************************************************************80
 
@@ -896,8 +985,8 @@ void report ( int generation )
        << "  " << setw(14) << best_val 
        << "  " << setw(14) << avg 
 	   << "  " << setw(14) << stddev
-	   << "  " << setw(14) << forest->getOverallPredictionError()
-	   << "  " << setw(14) << forest->getOverallCorrelation()
+	   << "  " << setw(14) << overallPredictionError
+	   << "  " << setw(14) << overallCorrelation
 	   << "\n";
 
   // print trees
@@ -910,6 +999,8 @@ void report ( int generation )
 	  *trees_out << population[i].fitness;
 	  *trees_out << endl;
   }
+  verbose_out->flush();
+  averageFitness = avg;
   return;
 }
 //****************************************************************************80

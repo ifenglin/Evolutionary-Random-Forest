@@ -15,7 +15,7 @@ endif()
 ## ======================================================================================##
 ## Compiler flags
 ## ======================================================================================##
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11  -Wwrite-strings -Wno-dev")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11  -Wwrite-strings")
 
 ## ======================================================================================##
 ## In Clang phtread flag only for compiler, not for linker. For
@@ -32,7 +32,7 @@ endif()
 ## ======================================================================================##
 ## Subdirectories and source files
 ## ======================================================================================##
-include_directories(src src/utility src/Forest src/Tree src/mingw-std-threads C:/Boost/include/boost-1_64)
+include_directories(src src/utility src/Forest src/Tree src/mingw-std-threads C:/Boost/include/boost-1_64 C:/gunwin32/include)
 file(GLOB_RECURSE SOURCES src/*.cpp)
 list(REMOVE_ITEM SOURCES  ${CMAKE_SOURCE_DIR}/src/Forest/ForestProbability.cpp  ${CMAKE_SOURCE_DIR}/src/Forest/ForestSurvival.cpp  ${CMAKE_SOURCE_DIR}/src/Forest/ForestRegression.cpp  ${CMAKE_SOURCE_DIR}/src/Tree/TreeProbability.cpp  ${CMAKE_SOURCE_DIR}/src/Tree/TreeSurvival.cpp  ${CMAKE_SOURCE_DIR}/src/Tree/TreeRegression.cpp)
 

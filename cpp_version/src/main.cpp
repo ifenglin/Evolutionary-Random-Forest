@@ -9,8 +9,9 @@
 # include <ctime>
 # include <cstring>
 # include <ctime>
+# include <algorithm>
 # include "rf.h"
-#include <algorithm> 
+# include "Extraction.h"
 using namespace std;
 
 //

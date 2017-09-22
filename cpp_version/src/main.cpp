@@ -31,8 +31,9 @@ size_t tournament_size;
 double lambda, averageFitness, bestAverageFitness, overallPredictionError, overallCorrelation;
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
-char filename[20];
+char filename[64];
 std::string base_path = "D:\\ERF_Project\\logs\\";
+std::string prediction_path = "D:\\ERF_Project\\predictions\\";
 std::string input_file_path;
 std::string case_weight_file_path;
 int main (int argc, char* argv[]);
@@ -108,8 +109,74 @@ int main (int argc, char* argv[])
 //
 {
 	if (argc > 1) {
+		Forest* forest;
 		std::vector<genotype> NullPointer;
-		rf(argc, argv, NullPointer, true);
+		std::string input_file_path;
+		size_t serial = 0;
+		std::string input_file_ending = ".csv";
+		std::string forest_name;
+		std::string serial_ending = to_string(serial);
+		size_t ending_pos, ending_length;
+		char output_file_prefix[512];
+		int new_argc = argc + 2;
+		char ** new_argv = (char**)malloc(new_argc * sizeof(char *));
+		//time_t t = time(0);
+		//strftime(filename, sizeof(filename), "%Y%m%d%H%M%S", gmtime(&t));
+		for (int i = 0; i < argc; ++i) {
+			if (strcmp(argv[i], "--file") == 0 || strcmp(argv[i], "--predict") == 0) {
+				std::string input_file_basename = argv[i + 1];
+				// Remove directory if present.
+				// Do this before extension removal incase directory has a period character.
+				const size_t last_slash_idx = input_file_basename.find_last_of("\\/");
+				if (std::string::npos != last_slash_idx)
+				{
+					input_file_basename.erase(0, last_slash_idx + 1);
+				}
+
+				// Remove extension if present.
+				const size_t period_idx = input_file_basename.rfind('.');
+				if (std::string::npos != period_idx)
+				{
+					input_file_basename.erase(period_idx);
+				}
+				// add the basename to filename or input_file_ending respectively
+				if (strcmp(argv[i], "--file") == 0) {
+					input_file_path = argv[i + 1];
+					strcpy(filename, input_file_basename.c_str());
+				}
+				else {
+					forest_name =  "_" + input_file_basename;
+				}
+			}
+		}
+		strcat(filename, forest_name.c_str());
+		strcpy(output_file_prefix, prediction_path.c_str());
+		strcat(output_file_prefix, filename);
+
+		for (int i = 0; i < argc; ++i) {
+			new_argv[i] = argv[i];
+			cout << new_argv[i] << " ";
+		}
+		new_argv[argc] = "--outprefix";
+		new_argv[argc + 1] = output_file_prefix;
+		cout << new_argv[argc] << " " << new_argv[argc + 1];
+
+		// if basename ends with a serial number, go to the next number in the next iteration
+		forest = rf(new_argc, new_argv, NullPointer, true);
+		ending_pos = input_file_path.length() - serial_ending.length();
+		ending_length = serial_ending.length();
+		while (input_file_path.compare(ending_pos, ending_length, serial_ending) == 0) {
+			Data* new_data;
+			++serial;
+			serial_ending = to_string(serial) + input_file_ending;
+			ending_length = serial_ending.length();
+			input_file_path.replace(ending_pos, ending_length, serial_ending);
+			new_data = forest->loadData(input_file_path);
+			forest->setData(new_data);
+			forest->run(true);
+			forest->writeOutput();
+		}
+		
 	}
 	else{
 	  string config_filename = "C:\\Users\\i-fen\\Documents\\ERF_Project\\forest_init_config.txt";

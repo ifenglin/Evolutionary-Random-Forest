@@ -86,6 +86,7 @@ public:
   // data loading functions
   Data* loadData(std::string input_file);
   void setData(Data* data);
+  void cleanData();
   std::vector<double>* loadCaseWeights(std::string input_file);
   void setCaseWeights(std::vector<double>* data);
 
@@ -273,6 +274,7 @@ protected:
   bool holdout;
   PredictionType prediction_type;
   uint num_random_splits;
+  bool prediction_overwrite;
 
   // MAXSTAT splitrule
   double alpha;

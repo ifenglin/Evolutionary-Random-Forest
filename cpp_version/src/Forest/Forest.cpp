@@ -49,7 +49,7 @@ Forest::Forest() :
         true), memory_saving_splitting(false), splitrule(DEFAULT_SPLITRULE), predict_all(false), keep_inbag(false), sample_fraction(
         1), holdout(false), prediction_type(DEFAULT_PREDICTIONTYPE), num_random_splits(DEFAULT_NUM_RANDOM_SPLITS), alpha(
         DEFAULT_ALPHA), minprop(DEFAULT_MINPROP), num_threads(DEFAULT_NUM_THREADS), data(0), overall_prediction_error(
-        0), importance_mode(DEFAULT_IMPORTANCE_MODE), progress(0) {
+        0), importance_mode(DEFAULT_IMPORTANCE_MODE), progress(0), prediction_overwrite(true) {
 }
 
 

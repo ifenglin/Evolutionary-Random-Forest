@@ -367,15 +367,21 @@ void ForestClassification::writeConfusionFile() {
 void ForestClassification::writePredictionFile() {
 
   // Open prediction file for writing
-  std::string filename = output_prefix + ".prediction";
+  std::string filename = output_prefix + "_prediction.txt";
   std::ofstream outfile;
-  outfile.open(filename, std::ios::out);
+  if (prediction_overwrite) {
+	  outfile.open(filename, std::ios::out);
+	  prediction_overwrite = false;
+  }
+  else {
+	  outfile.open(filename, std::ios::app);
+  }
   if (!outfile.good()) {
     throw std::runtime_error("Could not write to prediction file: " + filename + ".");
   }
 
   // Write
-  outfile << "Predictions: " << std::endl;
+  //outfile << "Predictions: " << std::endl;
   if (predict_all) {
     for (size_t k = 0; k < num_trees; ++k) {
       outfile << "Tree " << k << ":" << std::endl;

@@ -1,3 +1,4 @@
+#define __USE_MINGW_ANSI_STDIO 0
 # define MAX_POP_SIZE 10000
 # define VERBOSE false
 # include <cstdlib>
@@ -10,7 +11,7 @@
 # include <cstring>
 # include <ctime>
 # include "rf.h"
-#include <algorithm> 
+# include <algorithm>
 using namespace std;
 
 //
@@ -220,8 +221,11 @@ int main (int argc, char* argv[])
 		  }
 		  end = clock();
 		  elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-		  population = bestpopulation;
-		  evaluate(seed);
+		  // evaluate the best generation again if the best gen is not the last
+		  if (best_gen != max_gens) {
+			  population = bestpopulation;
+			  evaluate(seed);
+		  }
 		  population.clear();
 		  newpopulation.clear();
 		  bestpopulation.clear();

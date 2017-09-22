@@ -59,6 +59,10 @@ Forest::~Forest() {
   }
 }
 
+void Forest::cleanData() {
+	delete this->data;
+}
+
 Data* Forest::loadData(std::string input_file) {
 	Data* data = 0;
 	// Initialize data with memmode
@@ -89,6 +93,7 @@ Data* Forest::loadData(std::string input_file) {
 }
 
 void Forest::setData(Data* data) {
+	cleanData();
 	this->data = data;
 }
 
@@ -101,13 +106,14 @@ std::vector<double>* Forest::loadCaseWeights(std::string case_weights_file) {
 		if ((*loaded_case_weights).size() != num_samples) {
 			throw std::runtime_error("Number of case weights is not equal to number of samples.");
 		}
+		std::cout << "completed." << std::endl;
 	}
-	std::cout << "completed." << std::endl;
 	return loaded_case_weights;
 }
 
 void Forest::setCaseWeights(std::vector<double>* case_weights) {
 	// Sample from non-zero weights in holdout mode
+	this->case_weights.clear();
 	this->case_weights = *(case_weights);
 }
 
@@ -165,7 +171,7 @@ void Forest::initCpp(std::string dependent_variable_name, MemoryMode memory_mode
       throw std::runtime_error("Number of split select weights is not equal to number of independent variables.");
     }
     setSplitWeightVector(split_select_weights);
-  } else {
+  } else if (this->genes.size() != 0) {
 	  // set select weights with genes
 	  std::vector<std::vector<double>> split_select_weights;
 	  split_select_weights.resize(num_trees);

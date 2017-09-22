@@ -96,7 +96,6 @@ Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data
     // Call Ranger
     *verbose_out << "Starting Ranger." << std::endl;
 	if (reload_data) {
-		delete data;
 		data = forest->loadData(arg_handler.file);
 		*verbose_out << "Load data...";
 	}

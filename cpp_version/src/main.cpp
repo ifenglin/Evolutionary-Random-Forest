@@ -116,7 +116,7 @@ int main (int argc, char* argv[])
 		size_t serial = 0;
 		std::string input_file_ending = ".csv";
 		std::string forest_name;
-		std::string serial_ending = to_string(serial);
+		std::string serial_ending = to_string(serial) + input_file_ending;
 		size_t ending_pos, ending_length;
 		char output_file_prefix[512];
 		int new_argc = argc + 2;
@@ -162,20 +162,24 @@ int main (int argc, char* argv[])
 		new_argv[argc + 1] = output_file_prefix;
 		cout << new_argv[argc] << " " << new_argv[argc + 1];
 
-		// if basename ends with a serial number, go to the next number in the next iteration
 		forest = rf(new_argc, new_argv, NullPointer, true);
 		ending_pos = input_file_path.length() - serial_ending.length();
 		ending_length = serial_ending.length();
-		while (input_file_path.compare(ending_pos, ending_length, serial_ending) == 0) {
+		// if basename ends with "0.csv", go to the next number in the next iteration
+		if (input_file_path.compare(ending_pos, ending_length, serial_ending) == 0) {
 			Data* new_data;
-			++serial;
-			serial_ending = to_string(serial) + input_file_ending;
-			ending_length = serial_ending.length();
-			input_file_path.replace(ending_pos, ending_length, serial_ending);
-			new_data = forest->loadData(input_file_path);
-			forest->setData(new_data);
-			forest->run(true);
-			forest->writeOutput();
+			do {
+				++serial;
+				serial_ending = to_string(serial) + input_file_ending;
+				ending_length = serial_ending.length();
+				input_file_path.replace(ending_pos, ending_length, serial_ending);
+				new_data = forest->loadData(input_file_path);
+				if (new_data != NULL) {
+					forest->setData(new_data);
+					forest->run(true);
+					forest->writeOutput();
+				}
+			} while (new_data != NULL);
 		}
 		
 	}

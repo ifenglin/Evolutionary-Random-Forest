@@ -274,7 +274,6 @@ protected:
   bool holdout;
   PredictionType prediction_type;
   uint num_random_splits;
-  bool prediction_overwrite;
 
   // MAXSTAT splitrule
   double alpha;
@@ -324,6 +323,9 @@ protected:
 
   // Computation progress (finished trees)
   size_t progress;
+
+  // write or append prediction
+  bool prediction_overwrite;
 #ifdef R_BUILD
   size_t aborted_threads;
   bool aborted;

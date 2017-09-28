@@ -30,6 +30,7 @@ bool reload_data;
 size_t pop_size, max_gens, n_vars, n_features, best_gen;
 size_t tournament_size;
 double lambda, averageFitness, bestAverageFitness, overallPredictionError, overallCorrelation;
+double p_xover, p_mutation;
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
 char filename[64];
@@ -102,11 +103,11 @@ int main (int argc, char* argv[])
 //
 //    n_vars is the number of problem variables.
 //
-//    PMUTATION is the probability of mutation.
+//    p_mutation is the probability of mutation.
 //
 //    pop_size is the population size. 
 //
-//    PXOVER is the probability of crossover.                          
+//    p_xover is the probability of crossover.                          
 //
 {
 	if (argc > 1) {
@@ -291,7 +292,7 @@ void crossover ( int &seed )
   {
     x = r8_uniform_ab ( a, b, seed );
 
-    if ( x < PXOVER )
+    if ( x < p_xover )
     {
       ++first;
 
@@ -745,20 +746,24 @@ void initialize ( ifstream& input, int &seed )
 
 //  Initialize hyper parameters
   input >> input_file_path >> case_weight_file_path;
-  input >> n_vars >> n_features >> max_gens >> pop_size >> lambda;
+  input >> n_vars >> n_features >> max_gens >> pop_size >> p_xover >> p_mutation >> lambda;
   *verbose_out << "Input file: " << input_file_path << endl;
-  *verbose_out << "Max generations: " << max_gens << endl;
-  *verbose_out << "Population size: " << pop_size << endl;
-  *verbose_out << "Lambda         : " << lambda << endl;
   *verbose_out << "N. of variables: " << n_vars << endl;
   *verbose_out << "N. of features : " << n_features << endl;
+  *verbose_out << "Max generations: " << max_gens << endl;
+  *verbose_out << "Population size: " << pop_size << endl;
+  *verbose_out << "Prob. to xover : " << p_xover << endl;
+  *verbose_out << "Prob. to mutate: " << p_mutation << endl;
+  *verbose_out << "Lambda         : " << lambda << endl;
   *verbose_out << "Parameter ranges: " << endl;
   if (!VERBOSE) { // print message if verbose mode for debugging
-	  cout << "Max generations: " << max_gens << endl;
-	  cout << "Population size: " << pop_size << endl;
-	  cout << "Lambda         : " << lambda << endl;
 	  cout << "N. of variables: " << n_vars << endl;
 	  cout << "N. of features : " << n_features << endl;
+	  cout << "Max generations: " << max_gens << endl;
+	  cout << "Population size: " << pop_size << endl;
+	  cout << "Prob. to xover : " << p_xover << endl;
+	  cout << "Prob. to mutate: " << p_mutation << endl;
+	  cout << "Lambda         : " << lambda << endl;
   }
   if (n_vars < 2)
   {
@@ -903,7 +908,7 @@ void mutate ( int &seed )
     for ( j = 0; j < n_vars; j++ )
     {
       x = r8_uniform_ab ( a, b, seed );
-      if ( x < PMUTATION )
+      if ( x < p_mutation )
       {
         lbound = population[i].lower[j];
         ubound = population[i].upper[j];  

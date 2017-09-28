@@ -1,8 +1,6 @@
 // 
 //  Change any of these parameters to match your needs 
 //
-# define PXOVER 0.8
-# define PMUTATION 0.15
 struct genotype
 {
 	std::vector<uint> gene;

@@ -33,7 +33,7 @@
 
 Tree::Tree() :
     dependent_varID(0), mtry(0), num_samples(0), num_samples_oob(0), is_ordered_variable(0), no_split_variables(0), min_node_size(
-        0), deterministic_varIDs(0), split_select_varIDs(0), split_select_weights(0), case_weights(0), oob_sampleIDs(0), holdout(
+        0), min_leaf_size(0), deterministic_varIDs(0), split_select_varIDs(0), split_select_weights(0), case_weights(0), oob_sampleIDs(0), holdout(
         false), keep_inbag(false), data(0), variable_importance(0), importance_mode(DEFAULT_IMPORTANCE_MODE), sample_with_replacement(
         true), sample_fraction(1), memory_saving_splitting(false), splitrule(DEFAULT_SPLITRULE), alpha(DEFAULT_ALPHA), minprop(
         DEFAULT_MINPROP), num_random_splits(DEFAULT_NUM_RANDOM_SPLITS) {
@@ -42,7 +42,7 @@ Tree::Tree() :
 Tree::Tree(std::vector<std::vector<size_t>>& child_nodeIDs, std::vector<size_t>& split_varIDs,
     std::vector<double>& split_values, std::vector<bool>* is_ordered_variable) :
     dependent_varID(0), mtry(0), num_samples(0), num_samples_oob(0), is_ordered_variable(is_ordered_variable), no_split_variables(
-        0), min_node_size(0), deterministic_varIDs(0), split_select_varIDs(0), split_select_weights(0), case_weights(0), split_varIDs(
+        0), min_node_size(0), min_leaf_size(0), deterministic_varIDs(0), split_select_varIDs(0), split_select_weights(0), case_weights(0), split_varIDs(
         split_varIDs), split_values(split_values), child_nodeIDs(child_nodeIDs), oob_sampleIDs(0), holdout(false), keep_inbag(
         false), data(0), variable_importance(0), importance_mode(DEFAULT_IMPORTANCE_MODE), sample_with_replacement(
         true), sample_fraction(1), memory_saving_splitting(false), splitrule(DEFAULT_SPLITRULE), alpha(DEFAULT_ALPHA), minprop(
@@ -54,7 +54,7 @@ Tree::~Tree() {
 
 void Tree::init(Data* data, uint mtry, size_t dependent_varID, size_t num_samples, uint seed,
     std::vector<size_t>* deterministic_varIDs, std::vector<size_t>* split_select_varIDs,
-    std::vector<double>* split_select_weights, ImportanceMode importance_mode, uint min_node_size,
+    std::vector<double>* split_select_weights, ImportanceMode importance_mode, uint min_node_size, uint min_leaf_size,
     std::vector<size_t>* no_split_variables, bool sample_with_replacement, std::vector<bool>* is_unordered,
     bool memory_saving_splitting, SplitRule splitrule, std::vector<double>* case_weights, bool keep_inbag,
     double sample_fraction, double alpha, double minprop, bool holdout, uint num_random_splits) {
@@ -78,6 +78,7 @@ void Tree::init(Data* data, uint mtry, size_t dependent_varID, size_t num_sample
   this->split_select_weights = split_select_weights;
   this->importance_mode = importance_mode;
   this->min_node_size = min_node_size;
+  this->min_leaf_size = min_leaf_size;
   this->no_split_variables = no_split_variables;
   this->is_ordered_variable = is_unordered;
   this->sample_with_replacement = sample_with_replacement;

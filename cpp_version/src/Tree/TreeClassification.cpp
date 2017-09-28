@@ -249,9 +249,10 @@ void TreeClassification::findBestSplitValueSmallQ(size_t nodeID, size_t varID, s
   // Compute decrease of impurity for each possible split
   for (size_t i = 0; i < num_splits; ++i) {
 
-    // Stop if one child empty
-    size_t n_left = num_samples_node - n_right[i];
-    if (n_left == 0 || n_right[i] == 0) {
+	  // Skip if one child empty
+	  // or smaller than min_leaf_size
+	  size_t n_left = num_samples_node - n_right[i];
+	  if (n_left == 0 || n_right[i] == 0 || n_left < min_leaf_size || n_right[i] < min_leaf_size) {
       continue;
     }
 
@@ -314,38 +315,41 @@ void TreeClassification::findBestSplitValueLargeQ(size_t nodeID, size_t varID, s
     n_left += counter[i];
 
     // Stop if right child empty
+	// or smaller than min_leaf_size
     size_t n_right = num_samples_node - n_left;
-    if (n_right == 0) {
+    if (n_right == 0 || n_right < min_leaf_size) {
       break;
     }
 
-    // Sum of squares
-    double sum_left = 0;
-    double sum_right = 0;
-    for (size_t j = 0; j < num_classes; ++j) {
-      class_counts_left[j] += counter_per_class[i * num_classes + j];
-      size_t class_count_right = class_counts[j] - class_counts_left[j];
+	if (n_left >= min_leaf_size) {
+		// Sum of squares
+		double sum_left = 0;
+		double sum_right = 0;
+		for (size_t j = 0; j < num_classes; ++j) {
+			class_counts_left[j] += counter_per_class[i * num_classes + j];
+			size_t class_count_right = class_counts[j] - class_counts_left[j];
 
-      sum_left += class_counts_left[j] * class_counts_left[j];
-      sum_right += class_count_right * class_count_right;
-    }
+			sum_left += class_counts_left[j] * class_counts_left[j];
+			sum_right += class_count_right * class_count_right;
+		}
 
-    // Decrease of impurity
-    double decrease = sum_right / (double) n_right + sum_left / (double) n_left;
+		// Decrease of impurity
+		double decrease = sum_right / (double)n_right + sum_left / (double)n_left;
 
-    // If better than before, use this
-    if (decrease > best_decrease) {
-      // Find next value in this node
-      size_t j = i + 1;
-      while(j < num_unique && counter[j] == 0) {
-        ++j;
-      }
+		// If better than before, use this
+		if (decrease > best_decrease) {
+			// Find next value in this node
+			size_t j = i + 1;
+			while (j < num_unique && counter[j] == 0) {
+				++j;
+			}
 
-      // Use mid-point split
-      best_value = (data->getUniqueDataValue(varID, i) + data->getUniqueDataValue(varID, j)) / 2;
-      best_varID = varID;
-      best_decrease = decrease;
-    }
+			// Use mid-point split
+			best_value = (data->getUniqueDataValue(varID, i) + data->getUniqueDataValue(varID, j)) / 2;
+			best_varID = varID;
+			best_decrease = decrease;
+		}
+	}
   }
 
   delete[] class_counts_left;
@@ -399,29 +403,30 @@ void TreeClassification::findBestSplitValueUnordered(size_t nodeID, size_t varID
       }
     }
     size_t n_left = num_samples_node - n_right;
+	// if both new nodes are larger than min_leaf_size, calculate decrease of impurity
+	if (n_left >= min_leaf_size && n_right >= min_leaf_size) {
+		// Sum of squares
+		double sum_left = 0;
+		double sum_right = 0;
+		for (size_t j = 0; j < num_classes; ++j) {
+			size_t class_count_right = class_counts_right[j];
+			size_t class_count_left = class_counts[j] - class_count_right;
 
-    // Sum of squares
-    double sum_left = 0;
-    double sum_right = 0;
-    for (size_t j = 0; j < num_classes; ++j) {
-      size_t class_count_right = class_counts_right[j];
-      size_t class_count_left = class_counts[j] - class_count_right;
+			sum_right += class_count_right * class_count_right;
+			sum_left += class_count_left * class_count_left;
+		}
 
-      sum_right += class_count_right * class_count_right;
-      sum_left += class_count_left * class_count_left;
-    }
+		// Decrease of impurity
+		double decrease = sum_left / (double)n_left + sum_right / (double)n_right;
 
-    // Decrease of impurity
-    double decrease = sum_left / (double) n_left + sum_right / (double) n_right;
-
-    // If better than before, use this
-    if (decrease > best_decrease) {
-      best_value = splitID;
-      best_varID = varID;
-      best_decrease = decrease;
-    }
-
-    delete[] class_counts_right;
+		// If better than before, use this
+		if (decrease > best_decrease) {
+			best_value = splitID;
+			best_varID = varID;
+			best_decrease = decrease;
+		}
+	}
+	delete[] class_counts_right;
   }
 }
 

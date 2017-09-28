@@ -487,12 +487,13 @@ void Forest::grow() {
   // Init trees, create a seed for each tree, based on main seed
   std::uniform_int_distribution<uint> udist;
   for (size_t i = 0; i < num_trees; ++i) {
-    uint tree_seed;
-    if (seed == 0) {
-      tree_seed = udist(random_number_generator);
-    } else {
-      tree_seed = (i + 1) * seed;
-    }
+	// don't generate tree seed; use encoded tree seed in gene
+    //uint tree_seed;
+    //if (seed == 0) {
+    //  tree_seed = udist(random_number_generator);
+    //} else {
+    //  tree_seed = (i + 1) * seed;
+    //}
 
     // Get split select weights for tree
     std::vector<double>* tree_split_select_weights;
@@ -509,10 +510,14 @@ void Forest::grow() {
         &is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
         minprop, holdout, num_random_splits);*/
 
-	double sample_fraction_each_tree = (double)this->genes[i].gene[2] / 1000.0 * sample_fraction;
+	uint num_trees = this->genes[i].gene[0];
+	uint min_node_size = this->genes[i].gene[1];
+	uint min_leaf_size = ceil((double)min_node_size / 100.0 * this->genes[i].gene[2]) - 1;
+	double sample_fraction_each_tree = (double)this->genes[i].gene[3] / 1000.0 * sample_fraction;
+	uint tree_seed = this->genes[i].gene[4];
 	
-	trees[i]->init(data, this->genes[i].gene[0], dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
-		tree_split_select_weights, importance_mode, this->genes[i].gene[1], &no_split_variables, sample_with_replacement,
+	trees[i]->init(data, num_trees, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
+		tree_split_select_weights, importance_mode, min_node_size, min_leaf_size, &no_split_variables, sample_with_replacement,
 		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction_each_tree, alpha,
 		minprop, holdout, num_random_splits); 
   }

@@ -148,7 +148,8 @@ void ForestClassification::predictInternal() {
 void ForestClassification::computePredictionErrorInternal() {
 
 	// Use a fraction of the samples
-	size_t num_samples_downsized = (size_t)sqrt(num_samples);
+	//size_t num_samples_downsized = (size_t)sqrt(num_samples);
+	size_t num_samples_downsized = (size_t)(num_samples);
 	std::vector<size_t> sampleIDs;
 	std::uniform_int_distribution<size_t> unif_dist(0, num_samples - 1);
 
@@ -163,7 +164,7 @@ void ForestClassification::computePredictionErrorInternal() {
   class_counts.reserve(num_samples_downsized);
   // For each tree loop over OOB samples and count classes
   // record predictions from each tree
-  *verbose_out << "-Recording predictions..";
+  *verbose_out << "--Recording predictions.." << std::endl;
   //predictions_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_samples)));
   std::vector<size_t> num_missclassifications_each_tree = std::vector<size_t>(num_trees, 0);
   std::vector<size_t> num_predictions_each_tree = std::vector<size_t>(num_trees, 0);
@@ -191,7 +192,7 @@ void ForestClassification::computePredictionErrorInternal() {
   }
 
   // Compute majority vote for each sample
-  *verbose_out << "-Computing majority..";
+  *verbose_out << "--Computing majority.." << std::endl;
   predictions = std::vector<std::vector<std::unordered_map<size_t, unsigned>>>(1, std::vector<std::unordered_map<size_t, unsigned>>(1, std::unordered_map<size_t, unsigned>(num_samples_downsized)));;
   try {
 	  for (size_t i = 0; i < num_samples_downsized; ++i) {
@@ -211,7 +212,7 @@ void ForestClassification::computePredictionErrorInternal() {
   }
 
   // Compare predictions with true data
-  *verbose_out << "-Comparing predictions..";
+  *verbose_out << "--Comparing predictions.." << std::endl;
   size_t num_missclassifications = 0;
   size_t num_predictions = 0;
   try {
@@ -257,7 +258,7 @@ void ForestClassification::computePredictionErrorInternal() {
   //}
 
   // calculate (directed) correlation
-  *verbose_out << "-Calculating correlation..";
+  *verbose_out << "--Calculating correlation.." << std::endl;
   try {
 	  correlation_each_tree = std::vector<std::vector<std::vector<double>>>(1, std::vector<std::vector<double>>(num_trees, std::vector<double>(num_trees, 0.0)));
 	  //std::vector<size_t> intersected_oob_sampleIDs;
@@ -304,9 +305,13 @@ void ForestClassification::computePredictionErrorInternal() {
 					correlation_each_tree[0][i][j] = 0.0;
 					correlation_each_tree[0][j][i] = correlation_rate;
 				}
-				else {
+				else if (prediction_error_each_tree[i] > prediction_error_each_tree[j]) {
 					correlation_each_tree[0][i][j] = correlation_rate;
 					correlation_each_tree[0][j][i] = 0.0;
+				}
+				else {
+					correlation_each_tree[0][i][j] = correlation_rate;
+					correlation_each_tree[0][j][i] = correlation_rate;
 				}
 			}
 		  }

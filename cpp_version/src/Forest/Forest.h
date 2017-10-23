@@ -145,13 +145,29 @@ public:
 		  return 0.0;
 	  }
   }
-  const double getOverallCorrelation() const {
-	  double sum = 0;
-	  for (size_t i = 0; i < num_trees; ++i) {
-		  //sum += getAverageCorrelation(i);
-		  sum += getMaxCorrelation(i);
+  const double getOverallAverageCorrelation() const {
+	  if (num_trees > 1) {
+		  double sum = 0;
+		  for (size_t i = 0; i < num_trees; ++i) {
+			  sum += getAverageCorrelation(i);
+		  }
+		  return sum / (num_trees - 1);
 	  }
-	  return sum/num_trees;
+	  else {
+		  return 1;
+	  }
+  }
+  const double getOverallMaxCorrelation() const {
+	  if (num_trees > 1) {
+		  double sum = 0;
+		  for (size_t i = 0; i < num_trees; ++i) {
+			  sum += getMaxCorrelation(i);
+		  }
+		  return sum / (num_trees - 1);
+	  }
+	  else {
+		  return 1;
+	  }
   }
   const double getAverageCorrelation(size_t tree_idx) const {
 	  try {
@@ -169,6 +185,15 @@ public:
 	  catch (const std::bad_alloc &e) {
 		  std::cout << "Allocation failed at getCorrelation(" << tree_idx1 << ", " << tree_idx2 << "): " << e.what() << std::endl;
 		  return 0;
+	  }
+  }
+  const std::vector<double> getCorrelationArray(size_t tree_idx1) const {
+	  try {
+		  return correlation_each_tree[0][tree_idx1];
+	  }
+	  catch (const std::bad_alloc &e) {
+		  std::cout << "Allocation failed at getCorrelation(" << tree_idx1 << "): " << e.what() << std::endl;
+		  return std::vector<double>();
 	  }
   }
   const double getMaxCorrelation(size_t tree_idx) const {

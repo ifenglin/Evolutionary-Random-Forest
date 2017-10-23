@@ -10,7 +10,12 @@ struct genotype
 	//gene 3: fraction of observations to sample, in %%.
 	//gene 4: tree seed
 	//gene 5 - n_vars: select weights of each feature
-	double fitness;
+
+	// rfitness and cfitness are only for propotional selection
+	//double rfitness, cfitness;
+
+	double fitness, accuracy, correlation;
+	std::vector<double> correlation_array;
 	std::vector<double> upper;
 	std::vector<double> lower;
 	genotype(const size_t n_vars) {

@@ -1,6 +1,7 @@
 #define __USE_MINGW_ANSI_STDIO 0
 # define MAX_POP_SIZE 10000
 # define VERBOSE false
+# define CORRELATION_FUNC "AVG"
 # include <cstdlib>
 # include <iostream>
 # include <iomanip>
@@ -30,7 +31,7 @@ bool reload_data;
 size_t pop_size, max_gens, n_vars, n_features, best_gen;
 size_t tournament_size;
 double lambda, averageFitness, bestAverageFitness, overallPredictionError, overallCorrelation;
-double p_xover, p_mutation;
+double p_xover, p_mutation, p_xover_change_rate, p_mutation_change_rate, p_xover_per_gene, mutation_range, mutation_range_change_rate;
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
 char filename[64];
@@ -205,7 +206,7 @@ int main (int argc, char* argv[])
 		  reload_data = false;
 		  cout << "breed generations";
 		  time_check1 = clock();
-		  *verbose_out << endl << "Initilization time: " << double(time_check1 - begin) / CLOCKS_PER_SEC << " seconds" << endl;
+		  *verbose_out << "%" << "Initilization time: " << double(time_check1 - begin) / CLOCKS_PER_SEC << " seconds" << endl;
 		  for (generation = 0; generation < max_gens; ++generation) {
 			  selector(seed);
 			  crossover(seed);
@@ -213,7 +214,7 @@ int main (int argc, char* argv[])
 			  if (evaluate(seed)) {
 				  if (generation == 0) {
 					  time_check2 = clock();
-					  *verbose_out << "Evaluation time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl << endl;
+					  *verbose_out << "%" << "Evaluation time: " << double(time_check2 - time_check1) / CLOCKS_PER_SEC << "second" << endl;
 				  }
 				  report(generation + 1);
 				  elitist();
@@ -223,6 +224,10 @@ int main (int argc, char* argv[])
 			  else {
 				  break;
 			  }
+			  // decrease xover and mutation rate through time
+			  p_xover = p_xover * p_xover_change_rate;
+			  p_mutation = p_mutation * p_mutation_change_rate;
+			  mutation_range = mutation_range * mutation_range_change_rate;
 		  }
 		  end = clock();
 		  elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
@@ -235,9 +240,9 @@ int main (int argc, char* argv[])
 		  newpopulation.clear();
 		  bestpopulation.clear();
 		  reload_data = true;
-		  *verbose_out << "Best average fitness: " << bestAverageFitness << " at generation " << best_gen << endl;
-		  *verbose_out << "Forest and confusion for the best population are generated." << endl;
-		  *verbose_out << "Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
+		  *verbose_out << "% Best average fitness: " << bestAverageFitness << " at generation " << best_gen << endl;
+		  *verbose_out << "% Forest and confusion for the best population are generated." << endl;
+		  *verbose_out << "% Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
 		  cout << endl;
 	  }
 	  //
@@ -521,20 +526,33 @@ bool evaluate ( int& seed)
 
 	forest = rf(argc, args, population, reload_data);
 	// check if forest is successfully created
-	double prediction_error, max_correlation;
+	double prediction_error, correlation;
 	if (forest) {
 		for (size_t member = 0; member < pop_size; ++member) {
 			prediction_error = forest->getPredictionErrorOfTree(member);
-			max_correlation = forest->getMaxCorrelation(member);
-			population[member].fitness = max(0.0, 1 - prediction_error - (lambda * max_correlation));
+			if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
+				correlation = forest->getAverageCorrelation(member);
+			}
+			else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
+				correlation = forest->getMaxCorrelation(member);
+			}
+			population[member].accuracy = 1 - prediction_error;
+			population[member].correlation = correlation;
+			population[member].fitness = max(0.0, 1 - prediction_error - (lambda * correlation));
+			population[member].correlation_array = forest->getCorrelationArray(member);
 		}
 		overallPredictionError = forest->getOverallPredictionError();
-		overallCorrelation = forest->getOverallCorrelation();
+		if (CORRELATION_FUNC == "AVG") {
+			overallCorrelation = forest->getOverallAverageCorrelation();
+		}
+		else if (CORRELATION_FUNC == "MAX") {
+			overallCorrelation = forest->getOverallMaxCorrelation();
+		}
 		delete forest;
 	}
 	else {
 		std::cout <<  "*" ;
-		*verbose_out << "Something is wrong. Probably insufficient memory." << endl;
+		*verbose_out << "% Something is wrong. Probably insufficient memory." << endl;
 		return false;
 	}
 	return true;
@@ -746,30 +764,47 @@ void initialize ( ifstream& input, int &seed )
 
 //  Initialize hyper parameters
   input >> input_file_path >> case_weight_file_path;
-  input >> n_vars >> n_features >> max_gens >> pop_size >> p_xover >> p_mutation >> lambda;
-  *verbose_out << "Input file: " << input_file_path << endl;
-  *verbose_out << "N. of variables: " << n_vars << endl;
-  *verbose_out << "N. of features : " << n_features << endl;
-  *verbose_out << "Max generations: " << max_gens << endl;
-  *verbose_out << "Population size: " << pop_size << endl;
-  *verbose_out << "Prob. to xover : " << p_xover << endl;
-  *verbose_out << "Prob. to mutate: " << p_mutation << endl;
-  *verbose_out << "Lambda         : " << lambda << endl;
-  *verbose_out << "Parameter ranges: " << endl;
+  input >> n_vars >> n_features >> max_gens >> pop_size;
+  input >> p_xover >> p_xover_change_rate >> p_xover_per_gene;
+  input >> p_mutation >> p_mutation_change_rate >> mutation_range >> mutation_range_change_rate;
+  input >> lambda;
+  *verbose_out << "% Input file: " << input_file_path << endl;
+  *verbose_out << "% N. of variables: " << n_vars << endl;
+  *verbose_out << "% N. of features : " << n_features << endl;
+  *verbose_out << "% Max generations: " << max_gens << endl;
+  *verbose_out << "% Population size: " << pop_size << endl;
+  *verbose_out << "% crossover " << endl;
+  *verbose_out << "%     probability: " << p_xover << endl;
+  *verbose_out << "%     change rate: " << p_xover_change_rate << endl;
+  *verbose_out << "%     p. per gene: " << p_xover_per_gene << endl;
+  *verbose_out << "% mutation " << endl;
+  *verbose_out << "%     probability: " << p_mutation << endl;
+  *verbose_out << "%     change rate: " << p_mutation_change_rate << endl;
+  *verbose_out << "%     range      : " << mutation_range << endl;
+  *verbose_out << "%     change rate: " << mutation_range_change_rate << endl;
+  *verbose_out << "% Lambda         : " << lambda << endl;
+  *verbose_out << "% Parameter ranges: " << endl;
   if (!VERBOSE) { // print message if verbose mode for debugging
 	  cout << "N. of variables: " << n_vars << endl;
 	  cout << "N. of features : " << n_features << endl;
 	  cout << "Max generations: " << max_gens << endl;
 	  cout << "Population size: " << pop_size << endl;
-	  cout << "Prob. to xover : " << p_xover << endl;
-	  cout << "Prob. to mutate: " << p_mutation << endl;
+	  cout << "crossover " << endl;
+	  cout << "    probability: " << p_xover << endl;
+	  cout << "    change rate: " << p_xover_change_rate << endl;
+	  cout << "    p. per gene: " << p_xover_per_gene << endl;
+	  cout << "mutation " << endl;
+	  cout << "    probability: " << p_mutation << endl;
+	  cout << "    change rate: " << p_mutation_change_rate << endl;
+	  cout << "    range      : " << mutation_range << endl;
+	  cout << "    change rate: " << mutation_range_change_rate << endl;
 	  cout << "Lambda         : " << lambda << endl;
   }
   if (n_vars < 2)
   {
 	  *verbose_out << "\n";
-	  *verbose_out << "  The crossover modification will not be available,\n";
-	  *verbose_out << "  since it requires 2 <= n_vars.\n";
+	  *verbose_out << "%  The crossover modification will not be available,\n";
+	  *verbose_out << "%  since it requires 2 <= n_vars.\n";
   }
 
 //  Initialize population
@@ -784,7 +819,7 @@ void initialize ( ifstream& input, int &seed )
   {
 	  if (i < n_features) {
 		  input >> lbound >> ubound;
-		  *verbose_out << "   " << i + 1 << ": [" << lbound << ", " << ubound << "]" << endl;
+		  *verbose_out << "%    " << i + 1 << ": [" << lbound << ", " << ubound << "]" << endl;
 	  }
 	  else {
 		  // bounds for select weights
@@ -804,7 +839,7 @@ void initialize ( ifstream& input, int &seed )
   }
   // set tournament size
   tournament_size = int(ceil(pow(pop_size, 0.25)));
-  // 
+
   bestAverageFitness = 0;
 }
 //****************************************************************************80
@@ -902,6 +937,8 @@ void mutate ( int &seed )
   double lbound;
   double ubound;
   double x;
+  double step;
+  double lrange, rrange;
 
   for ( i = 0; i < pop_size; i++ )
   {
@@ -912,7 +949,10 @@ void mutate ( int &seed )
       {
         lbound = population[i].lower[j];
         ubound = population[i].upper[j];  
-        population[i].gene[j] = r8_uniform_ab ( lbound, ubound, seed );
+		step = (ubound - lbound) * mutation_range;
+		lrange = max( lbound, population[i].gene[j] - step);
+		rrange = min( ubound, population[i].gene[j] + step);
+        population[i].gene[j] = r8_uniform_ab ( lrange, rrange, seed );
       }
     }
   }
@@ -1042,8 +1082,8 @@ void report ( int generation )
   if ( generation == 0 )
   {
     *verbose_out << "\n";
-    *verbose_out << "  Generation       Best            Average       Standard         Overall         Overall\n";
-    *verbose_out << "  number           value           fitness       deviation       OOB Error      Correlation\n";
+    *verbose_out << "% Generation       Best            Average       Standard         Overall         Overall\n";
+    *verbose_out << "% number           value           fitness       deviation       OOB Error      Correlation\n";
     *verbose_out << "\n";
   }
 
@@ -1070,14 +1110,13 @@ void report ( int generation )
 	   << "\n";
 
   // print trees
-  *trees_out << "%" << generation << "th generation" << endl;
+  *trees_out << "% " << generation << "th generation" << endl;
   for (size_t i = 0; i < pop_size; i++) {
 	  for (size_t j = 0; j < n_vars; j++) {
-		  *trees_out << population[i].gene[j];
+		  *trees_out << setw(5) << population[i].gene[j];
 		  *trees_out << ' ';
 	  }
-	  *trees_out << population[i].fitness;
-	  *trees_out << endl;
+	  *trees_out << "  " << setw(5)  << setprecision(2) << population[i].accuracy << ' ' << population[i].correlation << ' ' << population[i].fitness << endl;
   }
   verbose_out->flush();
   averageFitness = avg;
@@ -1116,44 +1155,27 @@ void selector ( int &seed )
 //    Input/output, int &SEED, a seed for the random number generator.
 //
 {
-  //const double a = 0.0;
-  //const double b = 1.0;
-  uint i, k;
-  //int j;
+ /* const double a = 0.0;
+  const double b = 1.0;
+  double p;
+  double sum;*/
   uint picked, winner = 0;
-  uint mem;
-  //double p;
-  double sum;
-//
-//  Find the total fitness of the population.
-//
-  sum = 0.0;
-  for ( mem = 0; mem < pop_size; mem++ )
-  {
-    sum = sum + population[mem].fitness;
-  }
-//
-//  Calculate the relative fitness of each member.
-//
-  //for ( mem = 0; mem < pop_size; mem++ )
-  //{
-  //  population[mem].rfitness = population[mem].fitness / sum;
-  //}
-
-  // tournament selection
-  std::srand(seed);
-  for (mem = 0; mem < pop_size; mem++) {
-	  std::random_shuffle(pop_series.begin(), pop_series.end());
-	  for (k = 0; k < tournament_size; k++) {
-		  picked = pop_series.at(k);
-	      if (k == 0 || population[picked].fitness > population[winner].fitness) {
-			  winner = picked;
-		  }
-	  }
-	  newpopulation[mem] = population[winner];
-  }
-  
-
+//// standard propotinoal selection
+////
+////  Find the total fitness of the population.
+////
+//  sum = 0.0;
+//  for ( mem = 0; mem < pop_size; mem++ )
+//  {
+//    sum = sum + population[mem].fitness;
+//  }
+////
+////  Calculate the relative fitness of each member.
+////
+//  for ( mem = 0; mem < pop_size; mem++ )
+//  {
+//    population[mem].rfitness = population[mem].fitness / sum;
+//  }
 // 
 ////  Calculate the cumulative fitness.
 ////
@@ -1185,11 +1207,44 @@ void selector ( int &seed )
 //      }
 //    }
 //  }
-// 
+ 
+// tournament selection
+  std::srand(seed);
+  // reset the population for an empty, new population 
+  // by removing the effect of correlctions
+  for (size_t mem = 0; mem < pop_size; mem++) {
+	  population[mem].correlation = 0;
+	  population[mem].fitness = population[mem].accuracy;
+      population[mem].correlation_array[mem] = 1.0;
+  }
+  // tournament selection
+  for (size_t mem = 0; mem < pop_size; mem++) {
+    std::random_shuffle(pop_series.begin(), pop_series.end());
+    for (size_t k = 0; k < tournament_size; k++) {
+      picked = pop_series.at(k);
+        if (k == 0 || population[picked].fitness > population[winner].fitness) {
+  	    winner = picked;
+      }
+    }
+    newpopulation[mem] = population[winner];
+    // update fiteness accroding to correlation in the new population
+	for (size_t mem2 = 0; mem2 < pop_size; mem2++) {
+		double introduced_correlation;
+		if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
+			introduced_correlation = population[mem2].correlation_array[winner] / pop_size;
+		}
+		else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
+			introduced_correlation = max(0.0, population[mem2].correlation_array[winner] - population[mem2].correlation);
+		}
+		population[mem2].correlation = population[mem2].correlation + introduced_correlation;
+		double reduced_fitness = max(0.0, population[mem2].accuracy - population[mem2].correlation * lambda);
+		population[mem2].fitness = reduced_fitness;
+	}
+  }
 
 //  Overwrite the old population with the new one.
 //
-  for ( i = 0; i < pop_size; i++ )
+  for (size_t i = 0; i < pop_size; i++ )
   {
     population[i] = newpopulation[i]; 
   }
@@ -1234,7 +1289,7 @@ void timestamp ( )
 
   strftime ( time_buffer, TIME_SIZE, "%d %B %Y %I:%M:%S %p", tm );
 
-  *verbose_out << time_buffer << "\n";
+  *verbose_out << "% " << time_buffer << "\n";
 
   return;
 # undef TIME_SIZE
@@ -1290,10 +1345,9 @@ void Xover ( int one, int two, int &seed )
 //  }
 
   // uniform crossover
-  const double xover_rate = 0.5;
   for (i = 0; i < n_vars; i++)
   {
-	  if (r8_uniform_ab(0.0, 1.0, seed) < xover_rate) {
+	  if (r8_uniform_ab(0.0, 1.0, seed) < p_xover_per_gene) {
 		  t = population[one].gene[i];
 		  population[one].gene[i] = population[two].gene[i];
 		  population[two].gene[i] = t;

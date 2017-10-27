@@ -36,7 +36,7 @@
 using namespace std;
 
 
-Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data) {
+Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data, bool use_case_weights) {
 	//cout << "Start growing forest: " << endl;
 	//for (int i = 0; i < argc ; i++) {
 	//	cout << argv[i] << " ";
@@ -102,13 +102,15 @@ Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data
 	*verbose_out << "Set data...";
 	forest->setData(data);
 	*verbose_out << "done." << endl;
-	if (reload_data) {
-		delete case_weights;
-		*verbose_out << "Load case weights file...";
-		case_weights = forest->loadCaseWeights(arg_handler.caseweights);
+	if (use_case_weights) {
+		if (reload_data) {
+			delete case_weights;
+			*verbose_out << "Load case weights file...";
+			case_weights = forest->loadCaseWeights(arg_handler.caseweights);
+		}
+		*verbose_out << "Set case weights...";
+		forest->setCaseWeights(case_weights);
 	}
-	*verbose_out << "Set case weights...";
-	forest->setCaseWeights(case_weights);
 	*verbose_out << "done." << std::endl << "Set genes...";
 	forest->setGenes(genes);
 	*verbose_out << "done." << std::endl << "Initialize forest...";

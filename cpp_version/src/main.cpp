@@ -2,6 +2,8 @@
 # define MAX_POP_SIZE 10000
 # define VERBOSE false
 # define CORRELATION_FUNC "AVG"
+# define XOVER_MUTATION_FUNC "ADAPTIVE"
+# define USE_CASE_WEIGHTS true
 # include <cstdlib>
 # include <iostream>
 # include <iomanip>
@@ -31,7 +33,7 @@ bool reload_data;
 size_t pop_size, max_gens, n_vars, n_features, best_gen;
 size_t tournament_size;
 double lambda, averageFitness, bestAverageFitness, overallPredictionError, overallCorrelation;
-double p_xover, p_mutation, p_xover_change_rate, p_mutation_change_rate, p_xover_per_gene, mutation_range, mutation_range_change_rate;
+double p_xover, p_mutation, p_xover_change_rate, p_mutation_change_rate, xover_ratio, xover_ratio_change_rate, mutation_range, mutation_range_change_rate;
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
 char filename[64];
@@ -164,7 +166,7 @@ int main (int argc, char* argv[])
 		new_argv[argc + 1] = output_file_prefix;
 		cout << new_argv[argc] << " " << new_argv[argc + 1];
 
-		forest = rf(new_argc, new_argv, NullPointer, true);
+		forest = rf(new_argc, new_argv, NullPointer, true, USE_CASE_WEIGHTS);
 		ending_pos = input_file_path.length() - serial_ending.length();
 		ending_length = serial_ending.length();
 		// if basename ends with "0.csv", go to the next number in the next iteration
@@ -226,6 +228,7 @@ int main (int argc, char* argv[])
 			  }
 			  // decrease xover and mutation rate through time
 			  p_xover = p_xover * p_xover_change_rate;
+			  xover_ratio = xover_ratio * xover_ratio_change_rate;
 			  p_mutation = p_mutation * p_mutation_change_rate;
 			  mutation_range = mutation_range * mutation_range_change_rate;
 		  }
@@ -288,15 +291,18 @@ void crossover ( int &seed )
 {
   const double a = 0.0;
   const double b = 1.0;
-  uint mem = 0;
-  int one = 0;
-  int first = 0;
+  uint one = 0;
+  uint first = 0;
   double x;
 
-  for ( mem = 0; mem < pop_size; ++mem )
+  for ( size_t mem = 0; mem < pop_size; ++mem )
   {
     x = r8_uniform_ab ( a, b, seed );
-
+	if (strcmp(XOVER_MUTATION_FUNC, "ADAPTIVE") == 0) {
+		double k = 1.0;
+		double bestFitness = population[pop_size].fitness;
+		p_xover = min( k, k * (bestFitness - population[mem].fitness) / (bestFitness - averageFitness));
+	}
     if ( x < p_xover )
     {
       ++first;
@@ -490,7 +496,7 @@ bool evaluate ( int& seed)
 //
 //    Original version by Dennis Cormier and Sita Raghavan.
 //    This C++ version by John Burkardt.
-//
+//e
 {
 	char pop_size_char[4];
 	char file_path_char[512];
@@ -503,7 +509,8 @@ bool evaluate ( int& seed)
 	strcpy(case_weight_file_path_char, case_weight_file_path.c_str());
 	strcpy(output_file_path, base_path.c_str());
 	strcat(output_file_path, filename);
-	char * args[] = { "ranger", // dummy argument
+	if (USE_CASE_WEIGHTS) {
+		char * args[] = { "ranger", // dummy argument
 		//"--verbose",
 		"--file",
 		file_path_char,
@@ -515,16 +522,37 @@ bool evaluate ( int& seed)
 		pop_size_char,
 		"--seed",
 		seed_char,
-		"--caseweights",
-		case_weight_file_path_char,
 		"--write",
 		"--outprefix",
 		output_file_path,
 		"--nthreads",
-	    "8"};
-	int argc = sizeof(args) / sizeof(*args);
-
-	forest = rf(argc, args, population, reload_data);
+	    "8",
+		"--caseweights",
+		case_weight_file_path_char};
+		int argc = sizeof(args) / sizeof(*args);
+		forest = rf(argc, args, population, reload_data, USE_CASE_WEIGHTS);
+	} else {
+		char * args[] = { "ranger", // dummy argument
+			//"--verbose",
+			"--file",
+			file_path_char,
+			"--depvarname",
+			"\"label\"",
+			"--treetype",
+			"1",
+			"--ntree",
+			pop_size_char,
+			"--seed",
+			seed_char,
+			"--write",
+			"--outprefix",
+			output_file_path,
+			"--nthreads",
+			"8" };
+		int argc = sizeof(args) / sizeof(*args);
+		forest = rf(argc, args, population, reload_data, USE_CASE_WEIGHTS);
+	}
+	
 	// check if forest is successfully created
 	double prediction_error, correlation;
 	if (forest) {
@@ -542,10 +570,10 @@ bool evaluate ( int& seed)
 			population[member].correlation_array = forest->getCorrelationArray(member);
 		}
 		overallPredictionError = forest->getOverallPredictionError();
-		if (CORRELATION_FUNC == "AVG") {
+		if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
 			overallCorrelation = forest->getOverallAverageCorrelation();
 		}
-		else if (CORRELATION_FUNC == "MAX") {
+		else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
 			overallCorrelation = forest->getOverallMaxCorrelation();
 		}
 		delete forest;
@@ -765,9 +793,30 @@ void initialize ( ifstream& input, int &seed )
 //  Initialize hyper parameters
   input >> input_file_path >> case_weight_file_path;
   input >> n_vars >> n_features >> max_gens >> pop_size;
-  input >> p_xover >> p_xover_change_rate >> p_xover_per_gene;
+  input >> p_xover >> p_xover_change_rate >> xover_ratio >> xover_ratio_change_rate;
   input >> p_mutation >> p_mutation_change_rate >> mutation_range >> mutation_range_change_rate;
   input >> lambda;
+
+  if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
+	  *verbose_out << "% Correlation function: average" << endl;
+	  cout << "Correlation function: average" << endl;
+  }
+  else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
+	  *verbose_out << "% Correlation function: maximum" << endl;
+	  cout << "Correlation function: maximum" << endl;
+  }
+  if (strcmp(XOVER_MUTATION_FUNC, "ADAPTIVE") == 0) {
+	  p_xover = -1;
+	  p_xover_change_rate = -1;
+	  p_mutation = -1;
+	  p_mutation_change_rate = -1;
+	  *verbose_out << "% Adaptive crossover and mutation" << endl;
+	  cout << "Adaptive crossover and mutation" << endl;
+  }
+  if (!USE_CASE_WEIGHTS) {
+	  *verbose_out << "% Case weights are disabled." << endl;
+	  cout << "Case weights are disabled." << endl;
+  }
   *verbose_out << "% Input file: " << input_file_path << endl;
   *verbose_out << "% N. of variables: " << n_vars << endl;
   *verbose_out << "% N. of features : " << n_features << endl;
@@ -776,11 +825,12 @@ void initialize ( ifstream& input, int &seed )
   *verbose_out << "% crossover " << endl;
   *verbose_out << "%     probability: " << p_xover << endl;
   *verbose_out << "%     change rate: " << p_xover_change_rate << endl;
-  *verbose_out << "%     p. per gene: " << p_xover_per_gene << endl;
+  *verbose_out << "%   ratio        : " << xover_ratio << endl;
+  *verbose_out << "%     change rate: " << xover_ratio_change_rate << endl;
   *verbose_out << "% mutation " << endl;
   *verbose_out << "%     probability: " << p_mutation << endl;
   *verbose_out << "%     change rate: " << p_mutation_change_rate << endl;
-  *verbose_out << "%     range      : " << mutation_range << endl;
+  *verbose_out << "%   range        : " << mutation_range << endl;
   *verbose_out << "%     change rate: " << mutation_range_change_rate << endl;
   *verbose_out << "% Lambda         : " << lambda << endl;
   *verbose_out << "% Parameter ranges: " << endl;
@@ -792,11 +842,12 @@ void initialize ( ifstream& input, int &seed )
 	  cout << "crossover " << endl;
 	  cout << "    probability: " << p_xover << endl;
 	  cout << "    change rate: " << p_xover_change_rate << endl;
-	  cout << "    p. per gene: " << p_xover_per_gene << endl;
+	  cout << "  ratio        : " << xover_ratio << endl;
+	  cout << "    change rate: " << xover_ratio_change_rate << endl;
 	  cout << "mutation " << endl;
 	  cout << "    probability: " << p_mutation << endl;
 	  cout << "    change rate: " << p_mutation_change_rate << endl;
-	  cout << "    range      : " << mutation_range << endl;
+	  cout << "  range        : " << mutation_range << endl;
 	  cout << "    change rate: " << mutation_range_change_rate << endl;
 	  cout << "Lambda         : " << lambda << endl;
   }
@@ -933,26 +984,30 @@ void mutate ( int &seed )
 {
   const double a = 0.0;
   const double b = 1.0;
-  uint i, j;
   double lbound;
   double ubound;
   double x;
   double step;
   double lrange, rrange;
 
-  for ( i = 0; i < pop_size; i++ )
+  for ( size_t mem = 0; mem < pop_size; mem++ )
   {
-    for ( j = 0; j < n_vars; j++ )
+    for ( size_t g = 0; g < n_vars; g++ )
     {
       x = r8_uniform_ab ( a, b, seed );
+	  if (strcmp(XOVER_MUTATION_FUNC, "ADAPTIVE") == 0) {
+		  double k = 0.5;
+		  double bestFitness = population[pop_size].fitness;
+		  p_mutation = max(0.05, min(k, k * (bestFitness - population[mem].fitness) / (bestFitness - averageFitness)));
+	  }
       if ( x < p_mutation )
       {
-        lbound = population[i].lower[j];
-        ubound = population[i].upper[j];  
+        lbound = population[mem].lower[g];
+        ubound = population[mem].upper[g];  
 		step = (ubound - lbound) * mutation_range;
-		lrange = max( lbound, population[i].gene[j] - step);
-		rrange = min( ubound, population[i].gene[j] + step);
-        population[i].gene[j] = r8_uniform_ab ( lrange, rrange, seed );
+		lrange = max( lbound, population[mem].gene[g] - step);
+		rrange = min( ubound, population[mem].gene[g] + step);
+        population[mem].gene[g] = r8_uniform_ab ( lrange, rrange, seed );
       }
     }
   }
@@ -1347,7 +1402,7 @@ void Xover ( int one, int two, int &seed )
   // uniform crossover
   for (i = 0; i < n_vars; i++)
   {
-	  if (r8_uniform_ab(0.0, 1.0, seed) < p_xover_per_gene) {
+	  if (r8_uniform_ab(0.0, 1.0, seed) < xover_ratio) {
 		  t = population[one].gene[i];
 		  population[one].gene[i] = population[two].gene[i];
 		  population[two].gene[i] = t;

@@ -243,7 +243,7 @@ int main (int argc, char* argv[])
 		  newpopulation.clear();
 		  bestpopulation.clear();
 		  reload_data = true;
-		  *verbose_out << "% Best average fitness: " << bestAverageFitness << " at generation " << best_gen << endl;
+		  *verbose_out << "% Best strength over correlation: " << strength_over_correlation << " at generation " << best_gen << endl;
 		  *verbose_out << "% Forest and confusion for the best population are generated." << endl;
 		  *verbose_out << "% Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
 		  cout << endl;
@@ -897,7 +897,7 @@ void initialize ( ifstream& input, int &seed )
   // set tournament size
   tournament_size = int(ceil(pow(pop_size, 0.25)));
 
-  bestAverageFitness = 0;
+  best_strength_over_correlation = 0.0;
 }
 //****************************************************************************80
 

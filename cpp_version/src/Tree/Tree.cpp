@@ -57,7 +57,7 @@ void Tree::init(Data* data, uint mtry, size_t dependent_varID, size_t num_sample
     std::vector<double>* split_select_weights, ImportanceMode importance_mode, uint min_node_size, uint min_leaf_size,
     std::vector<size_t>* no_split_variables, bool sample_with_replacement, std::vector<bool>* is_unordered,
     bool memory_saving_splitting, SplitRule splitrule, std::vector<double>* case_weights, bool keep_inbag,
-    double sample_fraction, double alpha, double minprop, bool holdout, uint num_random_splits) {
+    double sample_fraction, double alpha, double minprop, bool holdout, uint num_random_splits, uint split_func) {
 
   this->data = data;
   this->mtry = mtry;
@@ -90,6 +90,7 @@ void Tree::init(Data* data, uint mtry, size_t dependent_varID, size_t num_sample
   this->alpha = alpha;
   this->minprop = minprop;
   this->num_random_splits = num_random_splits;
+  this->split_func = split_func;
 
   initInternal();
 }

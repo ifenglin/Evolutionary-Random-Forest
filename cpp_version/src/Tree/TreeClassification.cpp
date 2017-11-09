@@ -256,20 +256,46 @@ void TreeClassification::findBestSplitValueSmallQ(size_t nodeID, size_t varID, s
       continue;
     }
 
-    // Sum of squares
-    double sum_left = 0;
-    double sum_right = 0;
-    for (size_t j = 0; j < num_classes; ++j) {
-      size_t class_count_right = class_counts_right[i * num_classes + j];
-      size_t class_count_left = class_counts[j] - class_count_right;
+	double decrease = 0;
 
-      sum_right += class_count_right * class_count_right;
-      sum_left += class_count_left * class_count_left;
-    }
+	 // Gini index
+	if (split_func == 0) {
+		// Sum of squares
+		double sum_left = 0;
+		double sum_right = 0;
+		for (size_t j = 0; j < num_classes; ++j) {
+			size_t class_count_right = class_counts_right[i * num_classes + j];
+			size_t class_count_left = class_counts[j] - class_count_right;
 
-    // Decrease of impurity
-    double decrease = sum_left / (double) n_left + sum_right / (double) n_right[i];
+			sum_right += class_count_right * class_count_right;
+			sum_left += class_count_left * class_count_left;
+		}
 
+		// Decrease of impurity
+		decrease = sum_left / (double)n_left + sum_right / (double)n_right[i];
+	}
+	// Information gain
+	else if (split_func == 1) {
+		// p * log(p)
+		double sum_left = 0;
+		double sum_right = 0;
+		for (size_t j = 0; j < num_classes; ++j) {
+			size_t class_count_right = class_counts_right[i * num_classes + j];
+			size_t class_count_left = class_counts[j] - class_count_right;
+			
+			if (class_count_right != 0) {
+				double ratio_right = class_count_right / (double)n_right[i];
+				sum_right += -1 * ratio_right * log2(ratio_right);
+			}
+			if (class_count_left != 0) {
+				double ratio_left = class_count_left / (double)n_left;
+				sum_left += -1 * ratio_left * log2(ratio_left);
+			}
+		}
+
+		// Decrease of impurity
+		decrease = sum_left * (double)n_left + sum_right * (double)n_right[i];
+	}
     // If better than before, use this
     if (decrease > best_decrease) {
       best_value =  (possible_split_values[i] + possible_split_values[i + 1]) / 2;
@@ -322,19 +348,45 @@ void TreeClassification::findBestSplitValueLargeQ(size_t nodeID, size_t varID, s
     }
 
 	if (n_left >= min_leaf_size) {
-		// Sum of squares
-		double sum_left = 0;
-		double sum_right = 0;
-		for (size_t j = 0; j < num_classes; ++j) {
-			class_counts_left[j] += counter_per_class[i * num_classes + j];
-			size_t class_count_right = class_counts[j] - class_counts_left[j];
+		double decrease;
+		// Gini index
+		if (split_func == 0) {
+			// Sum of squares
+			double sum_left = 0;
+			double sum_right = 0;
+			for (size_t j = 0; j < num_classes; ++j) {
+				class_counts_left[j] += counter_per_class[i * num_classes + j];
+				size_t class_count_right = class_counts[j] - class_counts_left[j];
 
-			sum_left += class_counts_left[j] * class_counts_left[j];
-			sum_right += class_count_right * class_count_right;
+				sum_left += class_counts_left[j] * class_counts_left[j];
+				sum_right += class_count_right * class_count_right;
+			}
+
+			// Decrease of impurity
+			decrease = sum_right / (double)n_right + sum_left / (double)n_left;
 		}
+		// Information gain
+		else if (split_func == 1) {
+			// p * log(p)
+			double sum_left = 0;
+			double sum_right = 0;
+			for (size_t j = 0; j < num_classes; ++j) {
+				class_counts_left[j] += counter_per_class[i * num_classes + j];
+				size_t class_count_right = class_counts[j] - class_counts_left[j];
+				
+				if (class_count_right != 0) {
+					double ratio_right = class_count_right / (double)n_right;
+					sum_right += -1 * ratio_right * log2(ratio_right);
+				}
+				if (class_counts_left[j] != 0) {
+					double ratio_left = class_counts_left[j] / (double)n_left;
+					sum_left += -1 * ratio_left * log2(ratio_left);
+				}
+			}
 
-		// Decrease of impurity
-		double decrease = sum_right / (double)n_right + sum_left / (double)n_left;
+			// Decrease of impurity
+			decrease = sum_left * (double)n_left + sum_right * (double)n_right;
+		}
 
 		// If better than before, use this
 		if (decrease > best_decrease) {
@@ -405,19 +457,46 @@ void TreeClassification::findBestSplitValueUnordered(size_t nodeID, size_t varID
     size_t n_left = num_samples_node - n_right;
 	// if both new nodes are larger than min_leaf_size, calculate decrease of impurity
 	if (n_left >= min_leaf_size && n_right >= min_leaf_size) {
-		// Sum of squares
-		double sum_left = 0;
-		double sum_right = 0;
-		for (size_t j = 0; j < num_classes; ++j) {
-			size_t class_count_right = class_counts_right[j];
-			size_t class_count_left = class_counts[j] - class_count_right;
+		double decrease;
+		if (split_func == 0)
+		{
+			// Gini index
+			// Sum of squares
+			double sum_left = 0;
+			double sum_right = 0;
+			for (size_t j = 0; j < num_classes; ++j) {
+				size_t class_count_right = class_counts_right[j];
+				size_t class_count_left = class_counts[j] - class_count_right;
 
-			sum_right += class_count_right * class_count_right;
-			sum_left += class_count_left * class_count_left;
+				sum_right += class_count_right * class_count_right;
+				sum_left += class_count_left * class_count_left;
+			}
+
+			// Decrease of impurity
+			decrease = sum_left / (double)n_left + sum_right / (double)n_right;
 		}
+		// Information gain
+		else if (split_func == 1) {
+			// p * log(p)
+			double sum_left = 0;
+			double sum_right = 0;
+			for (size_t j = 0; j < num_classes; ++j) {
+				size_t class_count_right = class_counts_right[j];
+				size_t class_count_left = class_counts[j] - class_count_right;
 
-		// Decrease of impurity
-		double decrease = sum_left / (double)n_left + sum_right / (double)n_right;
+				if (class_count_right != 0) {
+					double ratio_right = class_count_right / (double)n_right;
+					sum_right += -1 * ratio_right * log2(ratio_right);
+				}
+				if (class_count_left != 0) {
+					double ratio_left = class_count_left / (double)n_left;
+					sum_left += -1 * ratio_left * log2(ratio_left);
+				}
+			}
+
+			// Decrease of impurity
+			decrease = sum_left * (double)n_left + sum_right * (double)n_right;
+		}
 
 		// If better than before, use this
 		if (decrease > best_decrease) {

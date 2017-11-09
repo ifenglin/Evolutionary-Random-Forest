@@ -32,7 +32,7 @@ Forest* forest;
 bool reload_data;
 size_t pop_size, max_gens, n_vars, n_features, best_gen;
 size_t tournament_size;
-double lambda, averageFitness, bestAverageFitness, overallPredictionError, overallCorrelation;
+double lambda, averageFitness, strength_over_correlation, best_strength_over_correlation, overallPredictionError, overallCorrelation;
 double p_xover, p_mutation, p_xover_change_rate, p_mutation_change_rate, xover_ratio, xover_ratio_change_rate, mutation_range, mutation_range_change_rate;
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
@@ -459,12 +459,12 @@ void saiyajin(size_t gen)
 //    Local, double WORST, the worst fitness value.
 //
 {
-	if (averageFitness > bestAverageFitness) {
+	if (strength_over_correlation > best_strength_over_correlation) {
 		for (size_t i = 0; i < pop_size; ++i) {
 			bestpopulation[i] = population[i];
 		}
 		best_gen = gen;
-		bestAverageFitness = averageFitness;
+		best_strength_over_correlation = strength_over_correlation;
 	}
 
 	return;
@@ -564,10 +564,16 @@ bool evaluate ( int& seed)
 			else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
 				correlation = forest->getMaxCorrelation(member);
 			}
-			population[member].accuracy = 1 - prediction_error;
+			double strength = 1 - prediction_error;
+			const double VERY_SMALL_VALUE = 0.01; // to avoid 0 divisor
+			population[member].accuracy = strength;
 			population[member].correlation = correlation;
-			population[member].fitness = max(0.0, 1 - prediction_error - (lambda * correlation));
 			population[member].correlation_array = forest->getCorrelationArray(member);
+			// fitness function at evaluation
+			//population[member].fitness = max(0.0, 1 - prediction_error - (lambda * correlation));
+			// inversed fitness, the higher the better
+			double squared_strength = pow(strength, 2);
+			population[member].fitness = squared_strength / max(pow(correlation, lambda), VERY_SMALL_VALUE);
 		}
 		overallPredictionError = forest->getOverallPredictionError();
 		if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
@@ -879,7 +885,7 @@ void initialize ( ifstream& input, int &seed )
 	  }
       for ( size_t j = 0; j < pop_size; j++ ) {
 		  population[j].lower[i] = lbound;
-		  population[j].upper[i] = ubound;
+		  population[j].upper[i] = ubound + 1;
           population[j].gene[i] = uint(r8_uniform_ab ( lbound, ubound, seed ));
       }
   }
@@ -988,7 +994,7 @@ void mutate ( int &seed )
   double ubound;
   double x;
   double step;
-  double lrange, rrange;
+  double lrange, urange;
 
   for ( size_t mem = 0; mem < pop_size; mem++ )
   {
@@ -1004,10 +1010,19 @@ void mutate ( int &seed )
       {
         lbound = population[mem].lower[g];
         ubound = population[mem].upper[g];  
-		step = (ubound - lbound) * mutation_range;
-		lrange = max( lbound, population[mem].gene[g] - step);
-		rrange = min( ubound, population[mem].gene[g] + step);
-        population[mem].gene[g] = r8_uniform_ab ( lrange, rrange, seed );
+		// categorical vars
+		if (g == 4 || g == 5) {
+			lrange = lbound;
+			urange = ubound;
+		}
+		// for non-categorical vars, a mutation range is applied.
+		else {
+			step = (ubound - lbound) * mutation_range;
+			lrange = max(lbound, population[mem].gene[g] - step);
+			urange = min(ubound, population[mem].gene[g] + step);
+		}
+		
+        population[mem].gene[g] = r8_uniform_ab ( lrange, urange, seed );
       }
     }
   }
@@ -1119,8 +1134,8 @@ void report ( int generation )
   uint i;
   double avg;
   double best_val;
-  double square_sum;
-  double stddev;
+  //double square_sum;
+  //double stddev;
   double sum;
   double sum_square;
 
@@ -1137,8 +1152,8 @@ void report ( int generation )
   if ( generation == 0 )
   {
     *verbose_out << "\n";
-    *verbose_out << "% Generation       Best            Average       Standard         Overall         Overall\n";
-    *verbose_out << "% number           value           fitness       deviation       OOB Error      Correlation\n";
+    *verbose_out << "% Generation       Best            Average    Strenth over        Overall         Overall\n";
+    *verbose_out << "%   number        fitness          fitness     correlation       OOB error      correlation\n";
     *verbose_out << "\n";
   }
 
@@ -1152,14 +1167,17 @@ void report ( int generation )
   }
 
   avg = sum / ( double ) pop_size;
-  square_sum = avg * avg * pop_size;
-  stddev = sqrt ( ( sum_square - square_sum ) / ( pop_size - 1 ) );
+  //square_sum = avg * avg * pop_size;
+  //stddev = sqrt ( ( sum_square - square_sum ) / ( pop_size - 1 ) );
+  const double VERY_SMALL_VALUE = 0.01; // avoid 0 divisor
+  strength_over_correlation = pow(1 - overallPredictionError, 2) / max(overallCorrelation, VERY_SMALL_VALUE);
   best_val = population[pop_size].fitness;
 
   *verbose_out << "  " << setw(8) << generation 
        << "  " << setw(14) << best_val 
        << "  " << setw(14) << avg 
-	   << "  " << setw(14) << stddev
+	   //<< "  " << setw(14) << stddev
+	   << "  " << setw(14) << strength_over_correlation
 	   << "  " << setw(14) << overallPredictionError
 	   << "  " << setw(14) << overallCorrelation
 	   << "\n";
@@ -1268,7 +1286,7 @@ void selector ( int &seed )
   // reset the population for an empty, new population 
   // by removing the effect of correlctions
   for (size_t mem = 0; mem < pop_size; mem++) {
-	  population[mem].correlation = 0;
+	  population[mem].correlation = 0.001; // avoid 0 divisor
 	  population[mem].fitness = population[mem].accuracy;
       population[mem].correlation_array[mem] = 1.0;
   }
@@ -1291,8 +1309,10 @@ void selector ( int &seed )
 		else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
 			introduced_correlation = max(0.0, population[mem2].correlation_array[winner] - population[mem2].correlation);
 		}
-		population[mem2].correlation = population[mem2].correlation + introduced_correlation;
-		double reduced_fitness = max(0.0, population[mem2].accuracy - population[mem2].correlation * lambda);
+		population[mem2].correlation = min(population[mem2].correlation + introduced_correlation, 1.0);
+		// fitness function at selection
+		//double reduced_fitness = max(0.0, population[mem2].accuracy - population[mem2].correlation * lambda);
+		double reduced_fitness = pow(population[mem2].accuracy, 2) / pow(population[mem2].correlation, lambda);
 		population[mem2].fitness = reduced_fitness;
 	}
   }

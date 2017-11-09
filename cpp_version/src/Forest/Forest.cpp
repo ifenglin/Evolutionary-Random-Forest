@@ -503,7 +503,7 @@ void Forest::grow() {
       tree_split_select_weights = &split_select_weights[0];
     }
 
-	//Init trees with individual genes instead of unified values
+	// Init trees with individual genes instead of unified values
 
     /*trees[i]->init(data, mtry, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
         tree_split_select_weights, importance_mode, min_node_size, &no_split_variables, sample_with_replacement,
@@ -515,11 +515,12 @@ void Forest::grow() {
 	uint min_leaf_size = ceil((double)min_node_size / 100.0 * this->genes[i].gene[2]) - 1;
 	double sample_fraction_each_tree = (double)this->genes[i].gene[3] / 1000.0 * sample_fraction;
 	uint tree_seed = this->genes[i].gene[4];
+	uint split_func = this->genes[i].gene[5];
 	
 	trees[i]->init(data, num_trees, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
 		tree_split_select_weights, importance_mode, min_node_size, min_leaf_size, &no_split_variables, sample_with_replacement,
 		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction_each_tree, alpha,
-		minprop, holdout, num_random_splits); 
+		minprop, holdout, num_random_splits, split_func); 
   }
 
 // Init variable importance

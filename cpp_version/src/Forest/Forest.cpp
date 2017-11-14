@@ -182,7 +182,9 @@ void Forest::initCpp(std::string dependent_variable_name, MemoryMode memory_mode
 	  std::vector<std::vector<double>> split_select_weights;
 	  split_select_weights.resize(num_trees);
 	  // number of genes = NVARS (but not available here)
-	  uint n_genes = sizeof(this->genes[0].gene) / sizeof(this->genes[0].gene[0]);
+	  // const uint length_genes = sizeof(this->genes[0].gene);
+	  // const uint size_gene = sizeof(this->genes[0].gene[0]);
+	  const uint n_genes = this->genes[0].gene.size();
 	  // set split weight vector only if number of variables > number of genes
 	  if (n_genes > num_independent_variables) {
 		  uint split_weight_begin_idx = n_genes - num_independent_variables;
@@ -496,6 +498,7 @@ void Forest::grow() {
     //}
 
     // Get split select weights for tree
+	// todo
     std::vector<double>* tree_split_select_weights;
     if (split_select_weights.size() > 1) {
       tree_split_select_weights = &split_select_weights[i];
@@ -510,14 +513,16 @@ void Forest::grow() {
         &is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction, alpha,
         minprop, holdout, num_random_splits);*/
 
-	uint num_trees = this->genes[i].gene[0];
+	uint mtry = this->genes[i].gene[0];
 	uint min_node_size = this->genes[i].gene[1];
-	uint min_leaf_size = ceil((double)min_node_size / 100.0 * this->genes[i].gene[2]) - 1;
+	uint min_leaf_size = ceil((double)min_node_size / 10.0 * this->genes[i].gene[2]) - 1;
 	double sample_fraction_each_tree = (double)this->genes[i].gene[3] / 1000.0 * sample_fraction;
-	uint tree_seed = this->genes[i].gene[4];
-	uint split_func = this->genes[i].gene[5];
-	
-	trees[i]->init(data, num_trees, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
+	uint split_func = this->genes[i].gene[4];
+	// generate a unique seed from other genes
+	// add foreast seed to tree seeds to make a difference in every generation 
+	uint tree_seed = (mtry * 1000) + (min_node_size * 100) + (min_leaf_size *10) + split_func + this->genes[i].gene[5];
+
+	trees[i]->init(data, mtry, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
 		tree_split_select_weights, importance_mode, min_node_size, min_leaf_size, &no_split_variables, sample_with_replacement,
 		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction_each_tree, alpha,
 		minprop, holdout, num_random_splits, split_func); 

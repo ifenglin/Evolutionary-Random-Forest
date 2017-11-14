@@ -159,8 +159,8 @@ void drawWithoutReplacementWeighted(std::vector<size_t>& result, std::mt19937_64
   result.reserve(num_samples);
 
   // Set all to not selected
-  std::vector<bool> temp;
-  temp.resize(indices.size(), false);
+  size_t n_variables = indices.size();
+  std::vector<bool> temp(n_variables, false);
 
   std::discrete_distribution<> weighted_dist(weights.begin(), weights.end());
   for (size_t i = 0; i < num_samples; ++i) {

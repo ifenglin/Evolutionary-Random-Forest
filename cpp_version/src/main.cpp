@@ -243,7 +243,7 @@ int main (int argc, char* argv[])
 		  newpopulation.clear();
 		  bestpopulation.clear();
 		  reload_data = true;
-		  *verbose_out << "% Best strength over correlation: " << strength_over_correlation << " at generation " << best_gen << endl;
+		  *verbose_out << "% Best strength over correlation: " << best_strength_over_correlation << " at generation " << best_gen << endl;
 		  *verbose_out << "% Forest and confusion for the best population are generated." << endl;
 		  *verbose_out << "% Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
 		  cout << endl;
@@ -1010,18 +1010,12 @@ void mutate ( int &seed )
       {
         lbound = population[mem].lower[g];
         ubound = population[mem].upper[g];  
-		// categorical vars
-		if (g == 4 || g == 5) {
-			lrange = lbound;
-			urange = ubound;
-		}
-		// for non-categorical vars, a mutation range is applied.
-		else {
-			step = (ubound - lbound) * mutation_range;
-			lrange = max(lbound, population[mem].gene[g] - step);
-			urange = min(ubound, population[mem].gene[g] + step);
-		}
-		
+		// for integer values, the mutation range is calculated within boundaries
+		// for binary values, mutation is possible when mutation range >= 0.5 
+		step = round((ubound - lbound) * mutation_range);
+		lrange = max(lbound, population[mem].gene[g] - step);
+		urange = min(ubound, population[mem].gene[g] + step);
+
         population[mem].gene[g] = r8_uniform_ab ( lrange, urange, seed );
       }
     }

@@ -1,8 +1,9 @@
 #define __USE_MINGW_ANSI_STDIO 0
-# define MAX_POP_SIZE 10000
+# define MAX_POP_SIZE 100
 # define VERBOSE false
 # define CORRELATION_FUNC "AVG"
 # define XOVER_MUTATION_FUNC "ADAPTIVE"
+# define FITNESS_FUNC "RATIO"
 # define USE_CASE_WEIGHTS true
 # include <cstdlib>
 # include <iostream>
@@ -570,10 +571,11 @@ bool evaluate ( int& seed)
 			population[member].correlation = correlation;
 			population[member].correlation_array = forest->getCorrelationArray(member);
 			// fitness function at evaluation
-			//population[member].fitness = max(0.0, 1 - prediction_error - (lambda * correlation));
-			// inversed fitness, the higher the better
-			double squared_strength = pow(strength, 2);
-			population[member].fitness = squared_strength / max(pow(correlation, lambda), VERY_SMALL_VALUE);
+			if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
+				population[member].fitness = max(0.0, 1 - prediction_error - (lambda * correlation));
+			}
+			else if (strcmp(FITNESS_FUNC, "RATIO") == 0)
+				population[member].fitness = pow(strength, 2) / max(pow(correlation, lambda), VERY_SMALL_VALUE);
 		}
 		overallPredictionError = forest->getOverallPredictionError();
 		if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
@@ -818,6 +820,14 @@ void initialize ( ifstream& input, int &seed )
 	  p_mutation_change_rate = -1;
 	  *verbose_out << "% Adaptive crossover and mutation" << endl;
 	  cout << "Adaptive crossover and mutation" << endl;
+  }
+  if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
+	  *verbose_out << "% Fitness function: subtraction" << endl;
+	  cout << "Fitness function: subtraction" << endl;
+  }
+  else if (strcmp(CORRELATION_FUNC, "RATIO") == 0) {
+	  *verbose_out << "% Fitness function: RATIO" << endl;
+	  cout << "Fitness function: RATIO" << endl;
   }
   if (!USE_CASE_WEIGHTS) {
 	  *verbose_out << "% Case weights are disabled." << endl;
@@ -1296,7 +1306,7 @@ void selector ( int &seed )
     newpopulation[mem] = population[winner];
     // update fiteness accroding to correlation in the new population
 	for (size_t mem2 = 0; mem2 < pop_size; mem2++) {
-		double introduced_correlation;
+		double introduced_correlation, reduced_fitness;
 		if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
 			introduced_correlation = population[mem2].correlation_array[winner] / pop_size;
 		}
@@ -1305,8 +1315,12 @@ void selector ( int &seed )
 		}
 		population[mem2].correlation = min(population[mem2].correlation + introduced_correlation, 1.0);
 		// fitness function at selection
-		//double reduced_fitness = max(0.0, population[mem2].accuracy - population[mem2].correlation * lambda);
-		double reduced_fitness = pow(population[mem2].accuracy, 2) / pow(population[mem2].correlation, lambda);
+		if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
+			reduced_fitness = max(0.0, population[mem2].accuracy - population[mem2].correlation * lambda);
+		}
+		else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
+			reduced_fitness = pow(population[mem2].accuracy, 2) / pow(population[mem2].correlation, lambda);
+		}
 		population[mem2].fitness = reduced_fitness;
 	}
   }

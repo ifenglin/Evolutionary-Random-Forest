@@ -162,8 +162,12 @@ void drawWithoutReplacementWeighted(std::vector<size_t>& result, std::mt19937_64
   size_t n_variables = indices.size();
   std::vector<bool> temp(n_variables, false);
 
+  //count avaialbe variables and calculate number of trials
+  const size_t num_available_variables = n_variables - std::count(weights.begin(), weights.end(), 0.0);
+  const size_t num_trials = std::min(num_samples, num_available_variables);
+
   std::discrete_distribution<> weighted_dist(weights.begin(), weights.end());
-  for (size_t i = 0; i < num_samples; ++i) {
+  for (size_t i = 0; i < num_trials; ++i) {
     size_t draw;
     do {
       draw = weighted_dist(random_number_generator);
@@ -182,8 +186,12 @@ void drawWithoutReplacementWeighted(std::vector<size_t>& result, std::mt19937_64
   std::vector<bool> temp;
   temp.resize(max_index + 1, false);
 
+  //count avaialbe variables and calculate number of trials
+  const size_t num_available_variables = max_index - std::count(weights.begin(), weights.end(), 0.0);
+  const size_t num_trials = std::min(num_samples, num_available_variables);
+
   std::discrete_distribution<> weighted_dist(weights.begin(), weights.end());
-  for (size_t i = 0; i < num_samples; ++i) {
+  for (size_t i = 0; i < num_trials; ++i) {
     size_t draw;
     do {
       draw = weighted_dist(random_number_generator);

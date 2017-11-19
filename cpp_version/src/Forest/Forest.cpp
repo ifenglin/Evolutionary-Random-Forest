@@ -490,13 +490,14 @@ void Forest::grow() {
   std::uniform_int_distribution<uint> udist;
   for (size_t i = 0; i < num_trees; ++i) {
 	// don't generate tree seed; use encoded tree seed in gene
-    uint tree_seed;
+    /*uint tree_seed;
     if (seed == 0) {
       tree_seed = udist(random_number_generator);
     } else {
       tree_seed = (i + 1) * seed;
-    }
-	tree_seed = 0;
+    }*/
+	static const uint tree_seed = udist(random_number_generator);
+	//tree_seed = 0;
 
     // Get split select weights for tree
 	// todo
@@ -521,7 +522,7 @@ void Forest::grow() {
 	uint split_func = this->genes[i].gene[4];
 	// generate a unique seed from other genes
 	// add foreast seed to tree seeds to make a difference in every generation 
-	//uint tree_seed = (mtry * 1000) + (min_node_size * 100) + (min_leaf_size *10) + split_func + this->genes[i].gene[5];
+	//uint tree_seed = (mtry * 1000) + (min_node_size * 100) + (min_leaf_size *10) + split_func ;
 
 	trees[i]->init(data, mtry, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
 		tree_split_select_weights, importance_mode, min_node_size, min_leaf_size, &no_split_variables, sample_with_replacement,

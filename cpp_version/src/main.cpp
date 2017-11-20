@@ -5,6 +5,7 @@
 # define XOVER_MUTATION_FUNC "ADAPTIVE"
 # define FITNESS_FUNC "SUBTRACTION"
 # define USE_CASE_WEIGHTS true
+# define N_PARAMS 6
 # include <cstdlib>
 # include <iostream>
 # include <iomanip>
@@ -31,7 +32,7 @@ using namespace std;
 std::vector<genotype> population, newpopulation, bestpopulation;
 Forest* forest;
 bool reload_data;
-size_t pop_size, max_gens, n_params, n_vars, n_features, best_gen;
+size_t pop_size, max_gens, n_vars, n_features, best_gen;
 size_t tournament_size;
 double lambda, averageFitness, strength_over_correlation, best_strength_over_correlation, overallPredictionError, overallCorrelation;
 double p_xover, p_mutation, p_xover_change_rate, p_mutation_change_rate, xover_ratio, xover_ratio_change_rate, mutation_range, mutation_range_change_rate;
@@ -195,11 +196,11 @@ int main (int argc, char* argv[])
 	  double elapsed_secs;
 	  ifstream input;
 	  clock_t begin, end, time_check1, time_check2;
-	  seed = 12345678;
 	  input.open(config_filename.c_str());
 	  reload_data = true;
 	  while (!input.eof()) {
 		  begin = clock();
+		  seed = begin;
 		  initialize(input, seed);
 		  timestamp();
 		  evaluate(seed);
@@ -800,11 +801,11 @@ void initialize ( ifstream& input, int &seed )
 
 //  Initialize hyper parameters
   input >> input_file_path >> case_weight_file_path;
-  input >> n_params >> n_features >> max_gens >> pop_size;
+  input >> n_features >> max_gens >> pop_size;
   input >> p_xover >> p_xover_change_rate >> xover_ratio >> xover_ratio_change_rate;
   input >> p_mutation >> p_mutation_change_rate >> mutation_range >> mutation_range_change_rate;
   input >> lambda;
-  n_vars = n_params + n_features;
+  n_vars = N_PARAMS + n_features;
 
   if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
 	  *verbose_out << "% Correlation function: average" << endl;
@@ -835,7 +836,7 @@ void initialize ( ifstream& input, int &seed )
 	  cout << "Case weights are disabled." << endl;
   }
   *verbose_out << "% Input file: " << input_file_path << endl;
-  *verbose_out << "% N. of parameters: " << n_params << endl;
+  *verbose_out << "% N. of variables: " << n_vars << endl;
   *verbose_out << "% N. of features : " << n_features << endl;
   *verbose_out << "% Max generations: " << max_gens << endl;
   *verbose_out << "% Population size: " << pop_size << endl;
@@ -884,7 +885,7 @@ void initialize ( ifstream& input, int &seed )
 //
   for ( size_t i = 0; i < n_vars; ++i )
   {
-	  if (i < n_params) {
+	  if (i < N_PARAMS) {
 		  input >> lbound >> ubound;
 		  *verbose_out << "%    " << i + 1 << ": [" << lbound << ", " << ubound << "]" << endl;
 	  }
@@ -1190,8 +1191,8 @@ void report ( int generation )
   *trees_out << "% " << generation << "th generation" << endl;
   for (size_t i = 0; i < pop_size; i++) {
 	  for (size_t j = 0; j < n_vars; j++) {
-		  if (j < n_params) {
-			  *trees_out << setw(5) << population[i].gene[j];
+		  if (j < N_PARAMS) {
+			  *trees_out << setw(3) << population[i].gene[j];
 			  *trees_out << ' ';
 		  }
 		  else {

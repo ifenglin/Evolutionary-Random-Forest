@@ -60,8 +60,11 @@ void TreeClassification::initInternal() {
 
     // Use number of random splits for extratrees
     if (splitrule == EXTRATREES && num_random_splits > max_num_splits) {
-      max_num_splits = num_random_splits;
-    }
+		max_num_splits = num_random_splits;
+	}
+	else if (splitrule == MEDIUM) {
+		max_num_splits = 1;
+	}
 
     counter = new size_t[max_num_splits];
     counter_per_class = new size_t[num_classes * max_num_splits];
@@ -110,7 +113,7 @@ bool TreeClassification::splitNodeInternal(size_t nodeID, std::vector<size_t>& p
 
   // Find best split, stop if no decrease of impurity
   bool stop;
-  if (splitrule == EXTRATREES) {
+  if (splitrule == EXTRATREES || splitrule == MEDIUM) {
     stop = findBestSplitExtraTrees(nodeID, possible_split_varIDs);
   } else {
     stop = findBestSplit(nodeID, possible_split_varIDs);
@@ -293,7 +296,7 @@ void TreeClassification::findBestSplitValueSmallQ(size_t nodeID, size_t varID, s
 			}
 		}
 
-		// Decrease of impurity
+		// Decrease of entropy 
 		decrease = sum_left * (double)n_left + sum_right * (double)n_right[i];
 	}
     // If better than before, use this
@@ -572,8 +575,14 @@ void TreeClassification::findBestSplitValueExtraTrees(size_t nodeID, size_t varI
   std::vector<double> possible_split_values;
   std::uniform_real_distribution<double> udist(min, max);
   possible_split_values.reserve(num_random_splits);
-  for (size_t i = 0; i < num_random_splits; ++i) {
-    possible_split_values.push_back(udist(random_number_generator));
+
+  if (splitrule == EXTRATREES) {
+	  for (size_t i = 0; i < num_random_splits; ++i) {
+		  possible_split_values.push_back(udist(random_number_generator));
+	  }
+  }
+  else if (splitrule == MEDIUM) {
+	  possible_split_values.push_back((max+min)/2.0);
   }
 
   // Initialize with 0, if not in memory efficient mode, use pre-allocated space
@@ -611,23 +620,48 @@ void TreeClassification::findBestSplitValueExtraTrees(size_t nodeID, size_t varI
 
     // Stop if one child empty
     size_t n_left = num_samples_node - n_right[i];
-    if (n_left == 0 || n_right[i] == 0) {
+    if (n_left == 0 || n_right[i] == 0 || n_left < min_leaf_size || n_right[i] < min_leaf_size) {
       continue;
     }
 
-    // Sum of squares
-    double sum_left = 0;
-    double sum_right = 0;
-    for (size_t j = 0; j < num_classes; ++j) {
-      size_t class_count_right = class_counts_right[i * num_classes + j];
-      size_t class_count_left = class_counts[j] - class_count_right;
+	double decrease;
+    // Gini index
+	if (split_func == 0) {
+		double sum_left = 0;
+		double sum_right = 0;
+		for (size_t j = 0; j < num_classes; ++j) {
+			size_t class_count_right = class_counts_right[i * num_classes + j];
+			size_t class_count_left = class_counts[j] - class_count_right;
 
-      sum_right += class_count_right * class_count_right;
-      sum_left += class_count_left * class_count_left;
-    }
+			sum_right += class_count_right * class_count_right;
+			sum_left += class_count_left * class_count_left;
+		}
 
-    // Decrease of impurity
-    double decrease = sum_left / (double) n_left + sum_right / (double) n_right[i];
+		// Decrease of impurity
+		decrease = sum_left / (double)n_left + sum_right / (double)n_right[i];
+	}
+	// Information gain
+	else if (split_func == 1) {
+		// p * log(p)
+		double sum_left = 0;
+		double sum_right = 0;
+		for (size_t j = 0; j < num_classes; ++j) {
+			size_t class_count_right = class_counts_right[i * num_classes + j];
+			size_t class_count_left = class_counts[j] - class_count_right;
+
+			if (class_count_right != 0) {
+				double ratio_right = class_count_right / (double)n_right[i];
+				sum_right += -1 * ratio_right * log2(ratio_right);
+			}
+			if (class_count_left != 0) {
+				double ratio_left = class_count_left / (double)n_left;
+				sum_left += -1 * ratio_left * log2(ratio_left);
+			}
+		}
+
+		// Decrease of entropy 
+		decrease = sum_left * (double)n_left + sum_right * (double)n_right[i];
+	}
 
     // If better than before, use this
     if (decrease > best_decrease) {

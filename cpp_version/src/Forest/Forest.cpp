@@ -518,15 +518,25 @@ void Forest::grow() {
 	uint mtry = this->genes[i].gene[0];
 	uint min_node_size = this->genes[i].gene[1];
 	uint min_leaf_size = ceil((double)min_node_size / 10.0 * this->genes[i].gene[2]) - 1;
-	double sample_fraction_each_tree = (double)this->genes[i].gene[3] / 1000.0 * sample_fraction;
+	double sample_fraction_each_tree = (double)this->genes[i].gene[3] / 100.0 * sample_fraction;
 	uint split_func = this->genes[i].gene[4];
+	SplitRule split_rule;
+	if (this->genes[i].gene[5] == 0) {
+		split_rule = LOGRANK;
+	}
+	else if (this->genes[i].gene[5] == 1) {
+		split_rule = EXTRATREES;
+	}
+	else if (this->genes[i].gene[5] == 2) {
+		split_rule = MEDIUM;
+	}
 	// generate a unique seed from other genes
 	// add foreast seed to tree seeds to make a difference in every generation 
 	//uint tree_seed = (mtry * 1000) + (min_node_size * 100) + (min_leaf_size *10) + split_func ;
 
 	trees[i]->init(data, mtry, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,
 		tree_split_select_weights, importance_mode, min_node_size, min_leaf_size, &no_split_variables, sample_with_replacement,
-		&is_ordered_variable, memory_saving_splitting, splitrule, &case_weights, keep_inbag, sample_fraction_each_tree, alpha,
+		&is_ordered_variable, memory_saving_splitting, split_rule, &case_weights, keep_inbag, sample_fraction_each_tree, alpha,
 		minprop, holdout, num_random_splits, split_func); 
   }
 

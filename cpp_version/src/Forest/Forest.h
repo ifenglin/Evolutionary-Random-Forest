@@ -134,6 +134,12 @@ public:
   const double getOverallPredictionError() const {
     return overall_prediction_error;
   }
+  const double getOverallStrength() const {
+	  return overall_strength;
+  }
+  const double getOverallVariance() const {
+	  return overall_variance;
+  }
   const std::vector<double> getPredictionErrorEachTree() const {
     return prediction_error_each_tree;
   }
@@ -144,6 +150,9 @@ public:
 		  std::cout << "Allocation failed at getPredictionErrorOfTree(" << tree_idx << "): " << e.what() << std::endl;
 		  return 0.0;
 	  }
+  }
+  const double getOverallMarginCorrelation() const {
+	  return overall_correlation;
   }
   const double getOverallAverageCorrelation() const {
 	  if (num_trees > 1) {
@@ -184,6 +193,15 @@ public:
 	  }
 	  catch (const std::bad_alloc &e) {
 		  std::cout << "Allocation failed at getCorrelation(" << tree_idx1 << ", " << tree_idx2 << "): " << e.what() << std::endl;
+		  return 0;
+	  }
+  }
+  const double getMargin(size_t tree_idx) const {
+	  try {
+		  return margin_each_tree[tree_idx];
+	  }
+	  catch (const std::bad_alloc &e) {
+		  std::cout << "Allocation failed at getMargin(" << tree_idx << "): " << e.what() << std::endl;
 		  return 0;
 	  }
   }
@@ -326,7 +344,11 @@ protected:
   //std::vector<std::vector<std::vector<unsigned>>> predictions_each_tree;
   std::vector<std::vector<std::vector<double>>> correlation_each_tree;
   double overall_prediction_error;
+  double overall_strength;
+  double overall_correlation;
+  double overall_variance;
   std::vector<double> prediction_error_each_tree;
+  std::vector<double> margin_each_tree;
 
   // Weight vector for selecting possible split variables, one weight between 0 (never select) and 1 (always select) for each variable
   // Deterministic variables are always selected

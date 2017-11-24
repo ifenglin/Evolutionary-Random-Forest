@@ -225,6 +225,48 @@ double mostFrequentValue(std::unordered_map<double, size_t>& class_count, std::m
   }
 }
 
+double mostFrequentFalseValue(std::unordered_map<double, size_t>& class_count, double true_class) {
+	std::vector<double> major_classes;
+	double major_class;
+	// Find maximum count
+	int max_count = 0;
+	
+	for (auto& class_value : class_count) {
+		if (class_value.first != true_class) {
+			// only the first occurance is stored so that it is deterministic
+			if (class_value.second > max_count) {
+				max_count = class_value.second;
+				major_class = class_value.first;
+			}
+		}
+	}
+	return major_class;
+}
+
+double computeMargin(std::unordered_map<double, size_t>& class_count, double true_class) {
+	std::vector<double> major_classes;
+
+	// Find maximum count
+	int true_class_count = 0;
+	int max_count = 0;
+	int total_count = 0;
+	for (auto& class_value : class_count) {
+		total_count += class_value.second;
+		if (class_value.first == true_class) {
+			true_class_count = class_value.second;
+		}
+		else {
+			if (class_value.second > max_count) {
+				max_count = class_value.second;
+			}
+			else if (class_value.second == max_count) {
+			}
+		}
+	}
+	return (true_class_count - max_count) / (double)total_count;
+}
+
+
 double computeConcordanceIndex(Data* data, std::vector<double>& sum_chf, size_t dependent_varID, size_t status_varID,
     std::vector<size_t>& sample_IDs) {
 

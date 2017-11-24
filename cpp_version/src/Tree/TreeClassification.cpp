@@ -79,8 +79,13 @@ double TreeClassification::estimate(size_t nodeID) {
     double value = data->get(sampleIDs[nodeID][i], dependent_varID);
     ++class_count[value];
   }
-
-  return (mostFrequentValue(class_count, random_number_generator));
+  if (class_count.size() != 0) {
+	  return (mostFrequentValue(class_count, random_number_generator));
+  }
+  else {
+	  return 0;
+  }
+  
 }
 
 void TreeClassification::appendToFileInternal(std::ofstream& file) { // #nocov start

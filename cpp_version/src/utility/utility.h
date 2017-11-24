@@ -280,6 +280,22 @@ size_t mostFrequentClass(std::vector<T>& class_count, std::mt19937_64 random_num
 double mostFrequentValue(std::unordered_map<double, size_t>& class_count, std::mt19937_64 random_number_generator);
 
 /**
+* Returns the most frequent value of a map with counts for the values except true class. 
+* @param class_count Map with classes and counts
+* @param random_number_generator Random number generator
+* @return Most frequent value
+*/
+double mostFrequentFalseValue(std::unordered_map<double, size_t>& class_count, double true_class);
+
+/**
+* Returns the margin.
+* @param class_count Map with classes and counts
+* @param true_class is the true class
+* @return margin
+*/
+double computeMargin(std::unordered_map<double, size_t>& class_count, double true_class);
+
+/**
  * Compute concordance index for given data and summed cumulative hazard function/estimate
  * @param data Pointer to Data object
  * @param sum_chf Summed chf over timepoints for each sample

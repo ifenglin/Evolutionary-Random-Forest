@@ -2,10 +2,11 @@
 # define MAX_POP_SIZE 100
 # define VERBOSE false
 # define CORRELATION_FUNC "AVG"
-# define XOVER_MUTATION_FUNC "ADAPTIVE"
-# define FITNESS_FUNC "SUBTRACTION"
+# define XOVER_MUTATION_FUNC "NONADAPTIVE"
+# define FITNESS_FUNC "RATIO"
 # define USE_CASE_WEIGHTS true
 # define N_PARAMS 6
+# define VERY_SMALL_VALUE 0.0001
 # include <cstdlib>
 # include <iostream>
 # include <iomanip>
@@ -34,7 +35,7 @@ Forest* forest;
 bool reload_data;
 size_t pop_size, max_gens, n_vars, n_features, best_gen;
 size_t tournament_size;
-double lambda, averageFitness, strength_over_correlation, best_strength_over_correlation, overallPredictionError, overallCorrelation;
+double lambda, averageFitness, correlation_over_strength, lowest_correlation_over_strength, overallPredictionError, overallStrength, overallCorrelation, overallVariance;
 double p_xover, p_mutation, p_xover_change_rate, p_mutation_change_rate, xover_ratio, xover_ratio_change_rate, mutation_range, mutation_range_change_rate;
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
@@ -245,7 +246,7 @@ int main (int argc, char* argv[])
 		  newpopulation.clear();
 		  bestpopulation.clear();
 		  reload_data = true;
-		  *verbose_out << "% Best strength over correlation: " << best_strength_over_correlation << " at generation " << best_gen << endl;
+		  *verbose_out << "% Best correlation over strength: " << lowest_correlation_over_strength << " at generation " << best_gen << endl;
 		  *verbose_out << "% Forest and confusion for the best population are generated." << endl;
 		  *verbose_out << "% Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
 		  cout << endl;
@@ -461,12 +462,12 @@ void saiyajin(size_t gen)
 //    Local, double WORST, the worst fitness value.
 //
 {
-	if (strength_over_correlation > best_strength_over_correlation) {
+	if (correlation_over_strength < lowest_correlation_over_strength) {
 		for (size_t i = 0; i < pop_size; ++i) {
 			bestpopulation[i] = population[i];
 		}
 		best_gen = gen;
-		best_strength_over_correlation = strength_over_correlation;
+		lowest_correlation_over_strength = correlation_over_strength;
 	}
 
 	return;
@@ -556,35 +557,39 @@ bool evaluate ( int& seed)
 	}
 	
 	// check if forest is successfully created
-	double prediction_error, correlation;
 	if (forest) {
 		for (size_t member = 0; member < pop_size; ++member) {
-			prediction_error = forest->getPredictionErrorOfTree(member);
+			double margin = forest->getMargin(member);
+			double prediction_error = forest->getPredictionErrorOfTree(member);
+			double correlation;
 			if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
 				correlation = forest->getAverageCorrelation(member);
 			}
 			else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
 				correlation = forest->getMaxCorrelation(member);
 			}
-			double strength = 1 - prediction_error;
-			const double VERY_SMALL_VALUE = 0.01; // to avoid 0 divisor
-			population[member].accuracy = strength;
+			population[member].accuracy = margin * (1 - forest->getPredictionErrorOfTree(member));
 			population[member].correlation = correlation;
 			population[member].correlation_array = forest->getCorrelationArray(member);
 			// fitness function at evaluation
 			if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
-				population[member].fitness = max(0.0, 1 - prediction_error - (lambda * correlation));
+				population[member].fitness = max(0.0, population[member].accuracy - (lambda *  correlation));
 			}
-			else if (strcmp(FITNESS_FUNC, "RATIO") == 0)
-				population[member].fitness = pow(strength, 2) / max(pow(correlation, lambda), VERY_SMALL_VALUE);
+			else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
+				// avoid 0 divider with VERY_SMALL_VALUE
+				population[member].fitness = abs(population[member].accuracy) * (1.0 - pow(correlation, lambda));
+			}
 		}
 		overallPredictionError = forest->getOverallPredictionError();
-		if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
+		overallStrength = forest->getOverallStrength();
+		/*if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
 			overallCorrelation = forest->getOverallAverageCorrelation();
 		}
 		else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
 			overallCorrelation = forest->getOverallMaxCorrelation();
-		}
+		}*/
+		overallCorrelation = forest->getOverallMarginCorrelation();
+		overallVariance = forest->getOverallVariance();
 		delete forest;
 	}
 	else {
@@ -908,7 +913,7 @@ void initialize ( ifstream& input, int &seed )
   // set tournament size
   tournament_size = int(ceil(pow(pop_size, 0.25)));
 
-  best_strength_over_correlation = 0.0;
+  lowest_correlation_over_strength = 9999999.0;
 }
 //****************************************************************************80
 
@@ -1157,8 +1162,8 @@ void report ( int generation )
   if ( generation == 0 )
   {
     *verbose_out << "\n";
-    *verbose_out << "% Generation       Best            Average    Strenth over        Overall         Overall\n";
-    *verbose_out << "%   number        fitness          fitness     correlation       OOB error      correlation\n";
+    *verbose_out << "% Generation       Best            Average    Correlation         Overall         Overall          Overall\n";
+    *verbose_out << "%   number        fitness          fitness    over strength       OOB error      correlation       Variance\n";
     *verbose_out << "\n";
   }
 
@@ -1174,17 +1179,18 @@ void report ( int generation )
   avg = sum / ( double ) pop_size;
   //square_sum = avg * avg * pop_size;
   //stddev = sqrt ( ( sum_square - square_sum ) / ( pop_size - 1 ) );
-  const double VERY_SMALL_VALUE = 0.01; // avoid 0 divisor
-  strength_over_correlation = pow(1 - overallPredictionError, 2) / max(overallCorrelation, VERY_SMALL_VALUE);
+  // avoid 0 divisor with VERY_SMALL_VALUE
+  correlation_over_strength = overallCorrelation / max( pow(overallStrength, 2), VERY_SMALL_VALUE);
   best_val = population[pop_size].fitness;
 
   *verbose_out << "  " << setw(8) << generation 
        << "  " << setw(14) << best_val 
        << "  " << setw(14) << avg 
 	   //<< "  " << setw(14) << stddev
-	   << "  " << setw(14) << strength_over_correlation
+	   << "  " << setw(14) << correlation_over_strength
 	   << "  " << setw(14) << overallPredictionError
 	   << "  " << setw(14) << overallCorrelation
+	   << "  " << setw(14) << overallVariance
 	   << "\n";
 
   // print trees
@@ -1296,7 +1302,7 @@ void selector ( int &seed )
   // reset the population for an empty, new population 
   // by removing the effect of correlctions
   for (size_t mem = 0; mem < pop_size; mem++) {
-	  population[mem].correlation = 0.001; // avoid 0 divisor
+	  population[mem].correlation = 0.0001; // avoid 0 divisor
 	  population[mem].fitness = population[mem].accuracy;
       population[mem].correlation_array[mem] = 1.0;
   }
@@ -1322,10 +1328,10 @@ void selector ( int &seed )
 		population[mem2].correlation = min(population[mem2].correlation + introduced_correlation, 1.0);
 		// fitness function at selection
 		if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
-			reduced_fitness = max(0.0, population[mem2].accuracy - population[mem2].correlation * lambda);
+			reduced_fitness = max(0.0, population[mem2].accuracy - ( population[mem2].correlation) * lambda );
 		}
 		else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
-			reduced_fitness = pow(population[mem2].accuracy, 2) / pow(population[mem2].correlation, lambda);
+			reduced_fitness = abs(population[mem2].accuracy) * (1.0 - pow(population[mem2].correlation, lambda ));
 		}
 		population[mem2].fitness = reduced_fitness;
 	}

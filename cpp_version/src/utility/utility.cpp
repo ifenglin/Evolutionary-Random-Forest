@@ -225,6 +225,41 @@ double mostFrequentValue(std::unordered_map<double, size_t>& class_count, std::m
   }
 }
 
+double mostFrequentValue(std::unordered_map<double, size_t>& class_count, std::unordered_map<double, double>& priors, std::mt19937_64 random_number_generator) {
+	std::vector<double> major_classes;
+
+	// Find maximum count
+	double max_count = 0;
+	for (auto& class_value : class_count) {
+		double posterior;
+		try {
+			posterior = class_value.second * priors.at(class_value.first);
+		}
+		catch (std::out_of_range& e) {
+			std::cout << e.what() << std::endl;
+		}
+		
+		if (posterior > max_count) {
+			max_count = posterior;
+			major_classes.clear();
+			major_classes.push_back(class_value.first);
+		}
+		else if (posterior == max_count) {
+			major_classes.push_back(class_value.first);
+		}
+
+	}
+
+	if (major_classes.size() == 1) {
+		return major_classes[0];
+	}
+	else {
+		// Choose randomly
+		std::uniform_int_distribution<size_t> unif_dist(0, major_classes.size() - 1);
+		return major_classes[unif_dist(random_number_generator)];
+	}
+}
+
 double mostFrequentFalseValue(std::unordered_map<double, size_t>& class_count, double true_class) {
 	std::vector<double> major_classes;
 	double major_class;

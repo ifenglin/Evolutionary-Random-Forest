@@ -341,24 +341,20 @@ void ForestClassification::computePredictionErrorInternal() {
 			if (n != 0) {
 				// calculate correlations without true-true samples
 				// correlation_rate = (double)correlated_count / (double)(total_count);
-				no_true_correlation_rate = ((n * sum_xy) - (sum_x * sum_y)) / \
-					sqrt((n * sum_x2 - pow(sum_x, 2)) * (n * sum_y2 - pow(sum_y, 2)));
-				// transform correlation into [0, 1] range.
-				no_true_correlation_rate = (no_true_correlation_rate + 1) / 2;
-				// set correlation only to the tree that has a higher prediction error
-				if (prediction_error_each_tree[i] < prediction_error_each_tree[j]) {
-					correlation_each_tree[0][i][j] = 0.0;
-					correlation_each_tree[0][j][i] = no_true_correlation_rate;
-				}
-				else if (prediction_error_each_tree[i] > prediction_error_each_tree[j]) {
-					correlation_each_tree[0][i][j] = no_true_correlation_rate;
-					correlation_each_tree[0][j][i] = 0.0;
-				}
-				else {
-					correlation_each_tree[0][i][j] = no_true_correlation_rate;
-					correlation_each_tree[0][j][i] = no_true_correlation_rate;
+				
+				no_true_correlation_rate = ((n * sum_xy) - (sum_x * sum_y)) /
+					(sqrt((n * sum_x2) - pow(sum_x, 2)) * sqrt((n * sum_y2) - pow(sum_y, 2)));
+
+				if ( std::isinf(no_true_correlation_rate) ) {
+					// correlation is underfined when one of the variances is zero
+					// as zero variance is unwanted for a tree, use 1 for its value;
+					no_true_correlation_rate = 1.0;
 				}
 
+				// transform correlation into [0, 1] range.
+				no_true_correlation_rate = (no_true_correlation_rate + 1.0) / 2.0;
+
+				// add true predictions into sum for Breiman's correlation
 				sum_xy += sum_true_true;
 				sum_x += sum_true_true;
 				sum_y += sum_true_true;
@@ -366,14 +362,32 @@ void ForestClassification::computePredictionErrorInternal() {
 				sum_y2 += sum_true_true;
 				n += sum_true_true;
 				// calculate correlations with true-ture samples;
-				correlation_rate = ( ( n * sum_xy ) - ( sum_x * sum_y ) ) / \
-					sqrt( ( ( n * sum_x2 )- pow( sum_x, 2 ) ) * ( ( n * sum_y2 ) - pow( sum_y, 2 ) ) );
+				correlation_rate = ((n * sum_xy) - (sum_x * sum_y)) /
+					(sqrt((n * sum_x2) - pow(sum_x, 2)) * sqrt((n * sum_y2) - pow(sum_y, 2)));
+				
+				if ( std::isinf(correlation_rate) ) {
+					// correlation is underfined when one of the variances is zero
+					// as zero variance is unwanted for a tree, use 1 for its value;
+					correlation_rate = 1.0;
+				}
 			}
-			//overall_variance += (n * sum_x2) - pow(sum_x, 2);
+
+			// set correlation only to the tree that has a higher prediction error
+			if (prediction_error_each_tree[i] < prediction_error_each_tree[j]) {
+				correlation_each_tree[0][i][j] = 0.0;
+				correlation_each_tree[0][j][i] = no_true_correlation_rate;
+			}
+			else if (prediction_error_each_tree[i] > prediction_error_each_tree[j]) {
+				correlation_each_tree[0][i][j] = no_true_correlation_rate;
+				correlation_each_tree[0][j][i] = 0.0;
+			}
+			else {
+				correlation_each_tree[0][i][j] = no_true_correlation_rate;
+				correlation_each_tree[0][j][i] = no_true_correlation_rate;
+			}
 			overall_correlation += correlation_rate;
 		  }
 	  }
-	  //overall_variance /= num_trees;
 	  overall_correlation /= num_trees * (num_trees + 1) / 2;
   } catch (const std::bad_alloc &e) {
 	  std::cout << "Allocation failed when calculating correation between tree: " << e.what() << ". Skipped" << std::endl;

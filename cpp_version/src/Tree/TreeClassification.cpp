@@ -80,7 +80,12 @@ double TreeClassification::estimate(size_t nodeID) {
     ++class_count[value];
   }
   if (class_count.size() != 0) {
-	  return (mostFrequentValue(class_count, random_number_generator));
+	  if (priors != NULL) {
+		  return mostFrequentValue(class_count, *priors, random_number_generator);
+	  } 
+	  else {
+		  return mostFrequentValue(class_count, random_number_generator);
+	  }
   }
   else {
 	  return 0;

@@ -280,6 +280,15 @@ size_t mostFrequentClass(std::vector<T>& class_count, std::mt19937_64 random_num
 double mostFrequentValue(std::unordered_map<double, size_t>& class_count, std::mt19937_64 random_number_generator);
 
 /**
+* Returns the most frequent value of a map with counts for the values with the consideration of priors
+* Returns a random class if counts are equal.
+* @param class_count Map with classes and counts
+* @param random_number_generator Random number generator
+* @return Most frequent value
+*/
+double mostFrequentValue(std::unordered_map<double, size_t>& class_count, std::unordered_map<double, double>&, std::mt19937_64 random_number_generator);
+
+/**
 * Returns the most frequent value of a map with counts for the values except true class. 
 * @param class_count Map with classes and counts
 * @param random_number_generator Random number generator

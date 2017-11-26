@@ -2,7 +2,7 @@
 # define MAX_POP_SIZE 100
 # define VERBOSE false
 # define CORRELATION_FUNC "AVG"
-# define XOVER_MUTATION_FUNC "NONADAPTIVE"
+# define XOVER_MUTATION_FUNC "ADAPTIVE"
 # define FITNESS_FUNC "RATIO"
 # define USE_CASE_WEIGHTS true
 # define N_PARAMS 6
@@ -577,7 +577,7 @@ bool evaluate ( int& seed)
 			}
 			else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
 				// avoid 0 divider with VERY_SMALL_VALUE
-				population[member].fitness = abs(population[member].accuracy) * (1.0 - pow(correlation, lambda));
+				population[member].fitness = sqrt(abs(population[member].accuracy)) * pow( (1.0 - correlation), lambda);
 			}
 		}
 		overallPredictionError = forest->getOverallPredictionError();
@@ -1027,12 +1027,21 @@ void mutate ( int &seed )
         lbound = population[mem].lower[g];
         ubound = population[mem].upper[g];  
 		// for integer values, the mutation range is calculated within boundaries
-		// for binary values, mutation is possible when mutation range >= 0.5 
-		step = round((ubound - lbound) * mutation_range);
-		lrange = max(lbound, population[mem].gene[g] - step);
-		urange = min(ubound, population[mem].gene[g] + step);
-
-        population[mem].gene[g] = r8_uniform_ab ( lrange, urange, seed );
+		// for binary values, mutation is possible only when mutation range >= 0.5 
+		if (ubound - lbound > 5) {
+			// integer values
+			step = round((ubound - lbound) * mutation_range);
+			lrange = max(lbound, population[mem].gene[g] - step);
+			urange = min(ubound, population[mem].gene[g] + step);
+			population[mem].gene[g] = r8_uniform_ab(lrange, urange, seed);
+		}
+		else if (ubound - lbound !=0 ) {
+			//for categorical values, mutation range determine the probability of random mutation
+			double y = r8_uniform_ab(a, b, seed);
+			if (y < mutation_range) {
+				population[mem].gene[g] = r8_uniform_ab(lbound, ubound, seed);
+			}
+		}
       }
     }
   }
@@ -1331,7 +1340,7 @@ void selector ( int &seed )
 			reduced_fitness = max(0.0, population[mem2].accuracy - ( population[mem2].correlation) * lambda );
 		}
 		else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
-			reduced_fitness = abs(population[mem2].accuracy) * (1.0 - pow(population[mem2].correlation, lambda ));
+			reduced_fitness = sqrt(abs(population[mem2].accuracy)) * pow( (1.0 - population[mem2].correlation ), lambda );
 		}
 		population[mem2].fitness = reduced_fitness;
 	}

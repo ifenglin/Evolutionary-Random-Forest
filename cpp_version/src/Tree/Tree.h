@@ -29,6 +29,7 @@
 #ifndef TREE_H_
 #define TREE_H_
 
+#include <unordered_map>
 #include <vector>
 #include <random>
 #include <iostream>
@@ -52,7 +53,7 @@ public:
       std::vector<double>* split_select_weights, ImportanceMode importance_mode, uint min_node_size, uint min_leaf_size,
       std::vector<size_t>* no_split_variables, bool sample_with_replacement, std::vector<bool>* is_unordered,
       bool memory_saving_splitting, SplitRule splitrule, std::vector<double>* case_weights, bool keep_inbag,
-      double sample_fraction, double alpha, double minprop, bool holdout, uint num_random_splits, uint split_func);
+      double sample_fraction, double alpha, double minprop, bool holdout, uint num_random_splits, uint split_func, std::unordered_map<double, double>* priors);
 
   virtual void initInternal() = 0;
 
@@ -193,6 +194,9 @@ protected:
   double minprop;
   uint num_random_splits;
   uint split_func;
+
+  // priors of classes
+  std::unordered_map<double, double>* priors;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(Tree);

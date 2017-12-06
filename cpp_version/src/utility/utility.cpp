@@ -267,6 +267,7 @@ double mostFrequentFalseValue(std::unordered_map<double, size_t>& class_count, d
 	int max_count = 0;
 	
 	for (auto& class_value : class_count) {
+
 		if (class_value.first != true_class) {
 			// only the first occurance is stored so that it is deterministic
 			if (class_value.second > max_count) {

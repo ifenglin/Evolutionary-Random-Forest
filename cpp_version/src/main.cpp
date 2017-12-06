@@ -2,11 +2,10 @@
 # define MAX_POP_SIZE 100
 # define VERBOSE false
 # define CORRELATION_FUNC "AVG"
-# define XOVER_MUTATION_FUNC "ADAPTIVE"
+# define XOVER_MUTATION_FUNC "NONADAPTIVE"
 # define FITNESS_FUNC "RATIO"
 # define USE_CASE_WEIGHTS true
 # define N_PARAMS 6
-# define VERY_SMALL_VALUE 0.0001
 # include <cstdlib>
 # include <iostream>
 # include <iomanip>
@@ -42,6 +41,7 @@ std::ostream *verbose_out, *trees_out;
 char filename[64];
 std::string base_path = "D:\\ERF_Project\\logs\\";
 std::string prediction_path = "D:\\ERF_Project\\predictions\\";
+const double VERY_SMALL_VALUE = 0.000001;
 std::string input_file_path;
 std::string case_weight_file_path;
 int main (int argc, char* argv[]);
@@ -246,7 +246,7 @@ int main (int argc, char* argv[])
 		  newpopulation.clear();
 		  bestpopulation.clear();
 		  reload_data = true;
-		  *verbose_out << "% Best correlation over strength: " << lowest_correlation_over_strength << " at generation " << best_gen << endl;
+		  *verbose_out << "% Best lowest correlation over strength: " << lowest_correlation_over_strength << " at generation " << best_gen << endl;
 		  *verbose_out << "% Forest and confusion for the best population are generated." << endl;
 		  *verbose_out << "% Total elapsed time: " << elapsed_secs << " seconds" << endl << endl;
 		  cout << endl;
@@ -559,8 +559,9 @@ bool evaluate ( int& seed)
 	// check if forest is successfully created
 	if (forest) {
 		for (size_t member = 0; member < pop_size; ++member) {
-			double margin = forest->getMargin(member);
+			double precision = forest->getPrecision(member);
 			double prediction_error = forest->getPredictionErrorOfTree(member);
+			double strength = sqrt(precision) *  (1 - prediction_error);
 			double correlation;
 			if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
 				correlation = forest->getAverageCorrelation(member);
@@ -568,16 +569,17 @@ bool evaluate ( int& seed)
 			else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
 				correlation = forest->getMaxCorrelation(member);
 			}
-			population[member].accuracy = margin * (1 - forest->getPredictionErrorOfTree(member));
+			population[member].strength = strength;
 			population[member].correlation = correlation;
 			population[member].correlation_array = forest->getCorrelationArray(member);
 			// fitness function at evaluation
 			if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
-				population[member].fitness = max(0.0, population[member].accuracy - (lambda *  correlation));
+				population[member].fitness = max(0.0, population[member].strength - (lambda *  correlation));
 			}
 			else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
 				// avoid 0 divider with VERY_SMALL_VALUE
-				population[member].fitness = sqrt(abs(population[member].accuracy)) * pow( (1.0 - correlation), lambda);
+				const double SMALL_VALUE = 0.01;
+				population[member].fitness = sqrt(strength) * pow(std::max( 1.0 - correlation, SMALL_VALUE ), lambda );
 			}
 		}
 		overallPredictionError = forest->getOverallPredictionError();
@@ -911,9 +913,9 @@ void initialize ( ifstream& input, int &seed )
 	  pop_series.push_back(i);
   }
   // set tournament size
-  tournament_size = int(ceil(pow(pop_size, 0.25)));
+  tournament_size = size_t(ceil(sqrt(pop_size)));
 
-  lowest_correlation_over_strength = 9999999.0;
+  lowest_correlation_over_strength = 999999999;
 }
 //****************************************************************************80
 
@@ -1214,7 +1216,7 @@ void report ( int generation )
 			  *trees_out << population[i].gene[j];
 		  }
 	  }
-	  *trees_out << "  " << setw(5)  << setprecision(2) << population[i].accuracy << ' ' << population[i].correlation << ' ' << population[i].fitness << endl;
+	  *trees_out << "  " << setw(5)  << setprecision(2) << population[i].strength << ' ' << population[i].correlation << ' ' << population[i].fitness << endl;
   }
   verbose_out->flush();
   averageFitness = avg;
@@ -1253,58 +1255,7 @@ void selector ( int &seed )
 //    Input/output, int &SEED, a seed for the random number generator.
 //
 {
- /* const double a = 0.0;
-  const double b = 1.0;
-  double p;
-  double sum;*/
   uint picked, winner = 0;
-//// standard propotinoal selection
-////
-////  Find the total fitness of the population.
-////
-//  sum = 0.0;
-//  for ( mem = 0; mem < pop_size; mem++ )
-//  {
-//    sum = sum + population[mem].fitness;
-//  }
-////
-////  Calculate the relative fitness of each member.
-////
-//  for ( mem = 0; mem < pop_size; mem++ )
-//  {
-//    population[mem].rfitness = population[mem].fitness / sum;
-//  }
-// 
-////  Calculate the cumulative fitness.
-////
-//  population[0].cfitness = population[0].rfitness;
-//  for ( mem = 1; mem < pop_size; mem++ )
-//  {
-//    population[mem].cfitness = population[mem-1].cfitness +       
-//      population[mem].rfitness;
-//  }
-//// 
-////  Select survivors using cumulative fitness. 
-////
-//  for ( i = 0; i < pop_size; i++ )
-//  { 
-//    p = r8_uniform_ab ( a, b, seed );
-//    if ( p < population[0].cfitness )
-//    {
-//      newpopulation[i] = population[0];      
-//    }
-//    else
-//    {
-//      for ( j = 0; j < pop_size; j++ )
-//      { 
-//        if ( population[j].cfitness <= p && p < population[j+1].cfitness )
-//        {
-//          newpopulation[i] = population[j+1];
-//		    break;
-//        }
-//      }
-//    }
-//  }
  
 // tournament selection
   std::srand(seed);
@@ -1312,7 +1263,7 @@ void selector ( int &seed )
   // by removing the effect of correlctions
   for (size_t mem = 0; mem < pop_size; mem++) {
 	  population[mem].correlation = 0.0001; // avoid 0 divisor
-	  population[mem].fitness = population[mem].accuracy;
+	  population[mem].fitness = population[mem].strength;
       population[mem].correlation_array[mem] = 1.0;
   }
   // tournament selection
@@ -1337,10 +1288,11 @@ void selector ( int &seed )
 		population[mem2].correlation = min(population[mem2].correlation + introduced_correlation, 1.0);
 		// fitness function at selection
 		if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
-			reduced_fitness = max(0.0, population[mem2].accuracy - ( population[mem2].correlation) * lambda );
+			reduced_fitness = max(0.0, population[mem2].strength - ( population[mem2].correlation) * lambda );
 		}
 		else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
-			reduced_fitness = sqrt(abs(population[mem2].accuracy)) * pow( (1.0 - population[mem2].correlation ), lambda );
+			const double SMALL_VALUE = 0.01;
+			reduced_fitness = population[mem2].strength * pow( std::max(1.0 - population[mem2].correlation, SMALL_VALUE ), lambda );
 		}
 		population[mem2].fitness = reduced_fitness;
 	}

@@ -194,6 +194,7 @@ protected:
   double minprop;
   uint num_random_splits;
   uint split_func;
+  const uint max_number_nodes = pow(2, 14);
 
   // priors of classes
   std::unordered_map<double, double>* priors;

@@ -14,7 +14,7 @@ struct genotype
 	// rfitness and cfitness are only for propotional selection
 	//double rfitness, cfitness;
 
-	double fitness, accuracy, correlation;
+	double fitness, strength, correlation;
 	std::vector<double> correlation_array;
 	std::vector<double> upper;
 	std::vector<double> lower;

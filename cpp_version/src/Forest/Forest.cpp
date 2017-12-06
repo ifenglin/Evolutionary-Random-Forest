@@ -491,6 +491,7 @@ void Forest::grow() {
   for (size_t i = 0; i < num_trees; ++i) {
 	// don't generate tree seed; use encoded tree seed in gene
     uint tree_seed;
+	//= udist(random_number_generator);
     if (seed == 0) {
       tree_seed = udist(random_number_generator);
     } else {
@@ -507,14 +508,20 @@ void Forest::grow() {
       tree_split_select_weights = &split_select_weights[0];
     }
 	static std::unordered_map<double, double> priors ({
-		{ 1.0 , 0.38 },
-		{ 2.0 , 0.216 },
-		{ 3.0 , 0.018 },
-		{ 4.0 , 0.151 },
-		{ 5.0 , 0.036 },
-		{ 6.0 , 0.012 },
-		{ 7.0 , 0.073 },
-		{ 255.0 , 0.114 }
+		/*{ 1.0 , 1.0 },
+		{ 2.0 , 1.0 },
+		{ 3.0 , 1.0 },
+		{ 4.0 , 1.0 },
+		{ 5.0 , 1.0 },
+		{ 6.0 , 1.0 },
+		{ 7.0 , 1.0 }*/
+		{ 1.0 , 0.429 },
+		{ 2.0 , 0.243 },
+		{ 3.0 , 0.020 },
+		{ 4.0 , 0.171 },
+		{ 5.0 , 0.040 },
+		{ 6.0 , 0.014 },
+		{ 7.0 , 0.083 }
 	});
 
 	uint mtry = this->genes[i].gene[0];

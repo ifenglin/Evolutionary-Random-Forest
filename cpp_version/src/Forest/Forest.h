@@ -146,7 +146,7 @@ public:
   const double getPredictionErrorOfTree(size_t tree_idx) const {
 	  try{
 		  return prediction_error_each_tree.at(tree_idx);
-	  } catch (const std::bad_alloc &e) {
+	  } catch (const std::out_of_range& e) {
 		  std::cout << "Allocation failed at getPredictionErrorOfTree(" << tree_idx << "): " << e.what() << std::endl;
 		  return 0.0;
 	  }
@@ -196,9 +196,9 @@ public:
 		  return 0;
 	  }
   }
-  const double getMargin(size_t tree_idx) const {
+  const double getPrecision(size_t tree_idx) const {
 	  try {
-		  return margin_each_tree[tree_idx];
+		  return precision_each_tree[tree_idx];
 	  }
 	  catch (const std::bad_alloc &e) {
 		  std::cout << "Allocation failed at getMargin(" << tree_idx << "): " << e.what() << std::endl;
@@ -348,7 +348,7 @@ protected:
   double overall_correlation;
   double overall_variance;
   std::vector<double> prediction_error_each_tree;
-  std::vector<double> margin_each_tree;
+  std::vector<double> precision_each_tree;
 
   // Weight vector for selecting possible split variables, one weight between 0 (never select) and 1 (always select) for each variable
   // Deterministic variables are always selected

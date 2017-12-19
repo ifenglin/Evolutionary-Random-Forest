@@ -89,6 +89,8 @@ public:
   void cleanData();
   std::vector<double>* loadCaseWeights(std::string input_file);
   void setCaseWeights(std::vector<double>* data);
+  std::unordered_map<double, double>* loadPriors(std::string priors_file);
+  void setPriors(std::unordered_map<double, double>* data);
 
   // gene bank functions
   void setGenes(std::vector<genotype> &genes);
@@ -358,6 +360,9 @@ protected:
 
   // Bootstrap weights
   std::vector<double> case_weights;
+
+  // Prior probabilities
+  std::unordered_map<double, double> priors;
 
   // Random number generator
   std::mt19937_64 random_number_generator;

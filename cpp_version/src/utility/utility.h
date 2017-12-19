@@ -160,6 +160,14 @@ void loadDoubleVectorFromFile(std::vector<double>& result, std::string filename)
 // #nocov end
 
 /**
+* Read a double-double unordered map from text file.
+* @param result Result vector of doubles with contents
+* @param filename filename of input file
+*/
+void loadUnorderedMapFromFile(std::unordered_map<double, double>& result, std::string filename);
+// #nocov end
+
+/**
  * Draw random numbers in a range without replacement and skip values.
  * @param result Vector to add results to. Will not be cleaned before filling.
  * @param random_number_generator Random number generator

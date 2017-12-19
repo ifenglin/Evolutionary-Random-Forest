@@ -96,6 +96,30 @@ void loadDoubleVectorFromFile(std::vector<double>& result, std::string filename)
   }
 } // #nocov end
 
+void loadUnorderedMapFromFile(std::unordered_map<double, double>& result, std::string filename) { // #nocov start
+	// Open input file
+	std::ifstream input_file;
+	input_file.open(filename);
+	if (!input_file.good()) {
+		throw std::runtime_error("Could not open file: " + filename);
+	}
+
+	std::string line;
+	getline(input_file, line);
+	std::stringstream line_stream(line);
+	double key, value;
+	while (line_stream >> key >> value) {
+		result.insert( {key, value} );
+		char seperator;
+		line_stream.get(seperator);
+		if (seperator == ',') {
+			getline(input_file, line);
+			line_stream.str("");
+			line_stream << line;
+		}
+	}
+} // #nocov end
+
 void drawWithoutReplacementSkip(std::vector<size_t>& result, std::mt19937_64& random_number_generator, size_t max,
     std::vector<size_t>& skip, size_t num_samples) {
   if (num_samples < max / 10) {
@@ -291,12 +315,8 @@ double computeMargin(std::unordered_map<double, size_t>& class_count, double tru
 		if (class_value.first == true_class) {
 			true_class_count = class_value.second;
 		}
-		else {
-			if (class_value.second > max_count) {
-				max_count = class_value.second;
-			}
-			else if (class_value.second == max_count) {
-			}
+		else if (class_value.second > max_count) {
+			max_count = class_value.second;
 		}
 	}
 	return (true_class_count - max_count) / (double)total_count;

@@ -123,6 +123,24 @@ void Forest::setCaseWeights(std::vector<double>* case_weights) {
 	this->case_weights = *(case_weights);
 }
 
+std::unordered_map<double, double>* Forest::loadPriors(std::string priors_file) {
+	std::unordered_map<double, double>* loaded_priors = new std::unordered_map<double, double>;
+	if (!priors_file.empty()) {
+		std::cout << "Loading priors file: " << priors_file << "...";
+
+		loadUnorderedMapFromFile(*loaded_priors, priors_file);
+
+		std::cout << "completed." << std::endl;
+	}
+	return loaded_priors;
+}
+
+void Forest::setPriors(std::unordered_map<double, double>* data)
+{
+	this->priors.clear();
+	this->priors = *(data);
+}
+
 
 void Forest::setGenes(std::vector<genotype> &genes)
 {
@@ -489,40 +507,32 @@ void Forest::grow() {
   // Init trees, create a seed for each tree, based on main seed
   std::uniform_int_distribution<uint> udist;
   for (size_t i = 0; i < num_trees; ++i) {
-	// don't generate tree seed; use encoded tree seed in gene
+
+
+	// tree seed schemes
     uint tree_seed;
-	//= udist(random_number_generator);
+	
+	// random seeds 
     if (seed == 0) {
       tree_seed = udist(random_number_generator);
     } else {
       tree_seed = (i + 1) * seed;
     }
+	//// one random seed for all trees
 	//static const uint tree_seed = udist(random_number_generator);
 
-    // Get split select weights for tree
-	// todo
+	//// use one gene as tree seed
+	//tree_seed = this->genes[i].gene[6];
+
+	//// generate a unique seed from other genes
+	//uint tree_seed = (mtry * 1000) + (min_node_size * 100) + (min_leaf_size *10) + split_func ;
+
     std::vector<double>* tree_split_select_weights;
     if (split_select_weights.size() > 1) {
       tree_split_select_weights = &split_select_weights[i];
     } else {
       tree_split_select_weights = &split_select_weights[0];
     }
-	static std::unordered_map<double, double> priors ({
-		/*{ 1.0 , 1.0 },
-		{ 2.0 , 1.0 },
-		{ 3.0 , 1.0 },
-		{ 4.0 , 1.0 },
-		{ 5.0 , 1.0 },
-		{ 6.0 , 1.0 },
-		{ 7.0 , 1.0 }*/
-		{ 1.0 , 0.429 },
-		{ 2.0 , 0.243 },
-		{ 3.0 , 0.020 },
-		{ 4.0 , 0.171 },
-		{ 5.0 , 0.040 },
-		{ 6.0 , 0.014 },
-		{ 7.0 , 0.083 }
-	});
 
 	uint mtry = this->genes[i].gene[0];
 	uint min_node_size = this->genes[i].gene[1];
@@ -539,9 +549,6 @@ void Forest::grow() {
 	else if (this->genes[i].gene[5] == 2) {
 		split_rule = MEDIUM;
 	}
-	// generate a unique seed from other genes
-	// add foreast seed to tree seeds to make a difference in every generation 
-	//uint tree_seed = (mtry * 1000) + (min_node_size * 100) + (min_leaf_size *10) + split_func ;
 
 	// Init trees with individual genes instead of unified values
 	trees[i]->init(data, mtry, dependent_varID, num_samples, tree_seed, &deterministic_varIDs, &split_select_varIDs,

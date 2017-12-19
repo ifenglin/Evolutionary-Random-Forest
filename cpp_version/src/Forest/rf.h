@@ -33,4 +33,4 @@
 #include "ForestSurvival.h"
 #include "ForestProbability.h"
 
-Forest* rf(int, char**, std::vector<genotype>&, bool reload, bool use_case_weights);
+Forest* rf(int, char**, std::vector<genotype>&, bool reload, bool use_case_weights, std::string priors_file_path);

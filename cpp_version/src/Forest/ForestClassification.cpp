@@ -395,8 +395,8 @@ void ForestClassification::computePredictionErrorInternal() {
 
 				if (std::isnan(correlation_rate) || std::isinf(correlation_rate)) {
 					// correlation is underfined when one of the variances is zero
-					// as zero variance is unwanted for a tree, use 1 for its value;
-					correlation_rate = 1.0;
+					// as zero variance is consided as extremely low variance, use 0 for its value;
+					correlation_rate = 0.0;
 				}
 			}
 
@@ -418,7 +418,8 @@ void ForestClassification::computePredictionErrorInternal() {
 			overall_correlation += correlation_rate;
 		  }
 	  }
-	  overall_correlation /= num_trees * (num_trees + 1) / 2;
+	  overall_correlation /= num_trees * (num_trees - 1) / 2;
+	  //overall_correlation /= num_trees * (num_trees + 1) / 2;
   } catch (const std::bad_alloc &e) {
 	  std::cout << "Allocation failed when calculating correation between tree: " << e.what() << ". Skipped" << std::endl;
   }

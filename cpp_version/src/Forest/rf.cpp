@@ -36,7 +36,7 @@
 using namespace std;
 
 
-Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data, bool use_case_weights) {
+Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data, bool use_case_weights, std::string priors_file_path) {
 	//cout << "Start growing forest: " << endl;
 	//for (int i = 0; i < argc ; i++) {
 	//	cout << argv[i] << " ";
@@ -46,6 +46,7 @@ Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data
   Forest* forest = 0;
   static Data* data = 0;
   static std::vector<double>* case_weights = 0;
+  static std::unordered_map<double, double>* priors = 0;
 
   try {
 
@@ -110,6 +111,15 @@ Forest* rf(int argc, char **argv, std::vector<genotype> &genes, bool reload_data
 		}
 		*verbose_out << "Set case weights...";
 		forest->setCaseWeights(case_weights);
+	}
+	if (priors_file_path != "" ) {
+		if (reload_data) {
+			delete priors;
+			*verbose_out << "Load priors file...";
+			priors = forest->loadPriors(priors_file_path);
+		}
+		*verbose_out << "Set priors...";
+		forest->setPriors(priors);
 	}
 	*verbose_out << "done." << std::endl << "Set genes...";
 	forest->setGenes(genes);

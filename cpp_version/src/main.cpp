@@ -1,9 +1,8 @@
 #define __USE_MINGW_ANSI_STDIO 0
 # define MAX_POP_SIZE 100
 # define VERBOSE false
-# define CORRELATION_FUNC "AVG"
-# define XOVER_MUTATION_FUNC "NONADAPTIVE"
 # define FITNESS_FUNC "RATIO"
+# define DIEHALF false
 # define USE_CASE_WEIGHTS true
 # define N_PARAMS 6
 # include <cstdlib>
@@ -39,15 +38,19 @@ double p_xover, p_mutation, p_xover_change_rate, p_mutation_change_rate, xover_r
 std::vector<int> pop_series;
 std::ostream *verbose_out, *trees_out;
 char filename[64];
-std::string base_path = "D:\\ERF_Project\\logs\\";
-std::string prediction_path = "D:\\ERF_Project\\predictions\\";
+std::string base_path = ".\\";
+std::string prediction_path = ".\\";
 const double VERY_SMALL_VALUE = 0.000001;
+std::string CORRELATION_FUNC;
+std::string XOVER_MUTATION_FUNC;
 std::string input_file_path;
 std::string case_weight_file_path;
+std::string priors_file_path;
 int main (int argc, char* argv[]);
 void crossover ( int &seed );
 void elitist ( );
 void saiyajin( size_t gen );
+void diehalf();
 bool evaluate ( int &seed );
 int i4_uniform_ab ( int a, int b, int &seed );
 void initialize ( ifstream& input, int &seed );
@@ -169,7 +172,7 @@ int main (int argc, char* argv[])
 		new_argv[argc + 1] = output_file_prefix;
 		cout << new_argv[argc] << " " << new_argv[argc + 1];
 
-		forest = rf(new_argc, new_argv, NullPointer, true, USE_CASE_WEIGHTS);
+		forest = rf(new_argc, new_argv, NullPointer, true, USE_CASE_WEIGHTS, priors_file_path);
 		ending_pos = input_file_path.length() - serial_ending.length();
 		ending_length = serial_ending.length();
 		// if basename ends with "0.csv", go to the next number in the next iteration
@@ -191,7 +194,7 @@ int main (int argc, char* argv[])
 		
 	}
 	else{
-	  string config_filename = "C:\\Users\\i-fen\\Documents\\ERF_Project\\forest_init_config.txt";
+	  string config_filename = ".\\forest_init_config.txt";
 	  uint generation;
 	  int seed;
 	  double elapsed_secs;
@@ -201,7 +204,6 @@ int main (int argc, char* argv[])
 	  reload_data = true;
 	  while (!input.eof()) {
 		  begin = clock();
-		  seed = begin;
 		  initialize(input, seed);
 		  timestamp();
 		  evaluate(seed);
@@ -238,10 +240,16 @@ int main (int argc, char* argv[])
 		  end = clock();
 		  elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 		  // evaluate the best generation again if the best gen is not the last
-		  if (best_gen != max_gens) {
+		  if (DIEHALF) {
+			  diehalf();
+			  evaluate(seed);
+		      report(generation + 1);
+		  }
+		  else if (best_gen != max_gens) {
 			  population = bestpopulation;
 			  evaluate(seed);
 		  }
+		  
 		  population.clear();
 		  newpopulation.clear();
 		  bestpopulation.clear();
@@ -301,7 +309,7 @@ void crossover ( int &seed )
   for ( size_t mem = 0; mem < pop_size; ++mem )
   {
     x = r8_uniform_ab ( a, b, seed );
-	if (strcmp(XOVER_MUTATION_FUNC, "ADAPTIVE") == 0) {
+	if (XOVER_MUTATION_FUNC == "ADAPTIVE") {
 		double k = 1.0;
 		double bestFitness = population[pop_size].fitness;
 		p_xover = min( k, k * (bestFitness - population[mem].fitness) / (bestFitness - averageFitness));
@@ -504,12 +512,14 @@ bool evaluate ( int& seed)
 	char pop_size_char[4];
 	char file_path_char[512];
 	char case_weight_file_path_char[512];
+	char priors_file_path_char[512];
 	char seed_char[8];
 	char output_file_path[512];
 	sprintf(pop_size_char, "%d", pop_size);
 	sprintf(seed_char, "%d", seed);
 	strcpy(file_path_char, input_file_path.c_str());
 	strcpy(case_weight_file_path_char, case_weight_file_path.c_str());
+	strcpy(priors_file_path_char, priors_file_path.c_str());
 	strcpy(output_file_path, base_path.c_str());
 	strcat(output_file_path, filename);
 	if (USE_CASE_WEIGHTS) {
@@ -533,7 +543,7 @@ bool evaluate ( int& seed)
 		"--caseweights",
 		case_weight_file_path_char};
 		int argc = sizeof(args) / sizeof(*args);
-		forest = rf(argc, args, population, reload_data, USE_CASE_WEIGHTS);
+		forest = rf(argc, args, population, reload_data, USE_CASE_WEIGHTS, priors_file_path);
 	} else {
 		char * args[] = { "ranger", // dummy argument
 			//"--verbose",
@@ -553,7 +563,7 @@ bool evaluate ( int& seed)
 			"--nthreads",
 			"8" };
 		int argc = sizeof(args) / sizeof(*args);
-		forest = rf(argc, args, population, reload_data, USE_CASE_WEIGHTS);
+		forest = rf(argc, args, population, reload_data, USE_CASE_WEIGHTS, priors_file_path);
 	}
 	
 	// check if forest is successfully created
@@ -563,10 +573,10 @@ bool evaluate ( int& seed)
 			double prediction_error = forest->getPredictionErrorOfTree(member);
 			double strength = sqrt(precision) *  (1 - prediction_error);
 			double correlation;
-			if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
+			if (CORRELATION_FUNC == "AVG") {
 				correlation = forest->getAverageCorrelation(member);
 			}
-			else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
+			else if (CORRELATION_FUNC == "MAX") {
 				correlation = forest->getMaxCorrelation(member);
 			}
 			population[member].strength = strength;
@@ -584,10 +594,10 @@ bool evaluate ( int& seed)
 		}
 		overallPredictionError = forest->getOverallPredictionError();
 		overallStrength = forest->getOverallStrength();
-		/*if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
+		/*if (CORRELATION_FUNC == "AVG") {
 			overallCorrelation = forest->getOverallAverageCorrelation();
 		}
-		else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
+		else if (CORRELATION_FUNC == "MAX") {
 			overallCorrelation = forest->getOverallMaxCorrelation();
 		}*/
 		overallCorrelation = forest->getOverallMarginCorrelation();
@@ -679,6 +689,7 @@ int i4_uniform_ab ( int a, int b, int &seed )
     cerr << "\n";
     cerr << "I4_UNIFORM_AB - Fatal error!\n";
     cerr << "  Input value of SEED = 0.\n";
+	cerr << "  You are lucky. This happens rarely. Pleas run the program again.\n";
     exit ( 1 );
   }
 //
@@ -807,74 +818,97 @@ void initialize ( ifstream& input, int &seed )
   }
 
 //  Initialize hyper parameters
-  input >> input_file_path >> case_weight_file_path;
+  input >> input_file_path >> case_weight_file_path >> priors_file_path;
+  input >> CORRELATION_FUNC >> XOVER_MUTATION_FUNC;
   input >> n_features >> max_gens >> pop_size;
   input >> p_xover >> p_xover_change_rate >> xover_ratio >> xover_ratio_change_rate;
   input >> p_mutation >> p_mutation_change_rate >> mutation_range >> mutation_range_change_rate;
   input >> lambda;
   n_vars = N_PARAMS + n_features;
 
-  if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
+  if (CORRELATION_FUNC == "AVG") {
 	  *verbose_out << "% Correlation function: average" << endl;
 	  cout << "Correlation function: average" << endl;
   }
-  else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
+  else if (CORRELATION_FUNC == "MAX") {
 	  *verbose_out << "% Correlation function: maximum" << endl;
 	  cout << "Correlation function: maximum" << endl;
   }
-  if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
-	  *verbose_out << "% Fitness function: subtraction" << endl;
-	  cout << "Fitness function: subtraction" << endl;
-  }
-  else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
-	  *verbose_out << "% Fitness function: RATIO" << endl;
-	  cout << "Fitness function: RATIO" << endl;
-  }
-  if (strcmp(XOVER_MUTATION_FUNC, "ADAPTIVE") == 0) {
-	  p_xover = -1;
-	  p_xover_change_rate = -1;
-	  p_mutation = -1;
-	  p_mutation_change_rate = -1;
-	  *verbose_out << "% Adaptive crossover and mutation" << endl;
-	  cout << "Adaptive crossover and mutation" << endl;
-  }
+  //if (strcmp(FITNESS_FUNC, "SUBTRACTION") == 0) {
+	 // *verbose_out << "% Fitness function: subtraction" << endl;
+	 // cout << "Fitness function: subtraction" << endl;
+  //}
+  //else if (strcmp(FITNESS_FUNC, "RATIO") == 0) {
+	 // *verbose_out << "% Fitness function: RATIO" << endl;
+	 // cout << "Fitness function: RATIO" << endl;
+  //}
   if (!USE_CASE_WEIGHTS) {
 	  *verbose_out << "% Case weights are disabled." << endl;
 	  cout << "Case weights are disabled." << endl;
   }
+  if (DIEHALF) {
+	  *verbose_out << "% Diehalf is enabled." << endl;
+	  cout << "Diehalf is enabled." << endl;
+  }
+
+  *verbose_out << "% Fitness function with lambda = " << lambda << endl;
   *verbose_out << "% Input file: " << input_file_path << endl;
   *verbose_out << "% N. of variables: " << n_vars << endl;
   *verbose_out << "% N. of features : " << n_features << endl;
   *verbose_out << "% Max generations: " << max_gens << endl;
   *verbose_out << "% Population size: " << pop_size << endl;
-  *verbose_out << "% crossover " << endl;
-  *verbose_out << "%     probability: " << p_xover << endl;
-  *verbose_out << "%     change rate: " << p_xover_change_rate << endl;
-  *verbose_out << "%   ratio        : " << xover_ratio << endl;
-  *verbose_out << "%     change rate: " << xover_ratio_change_rate << endl;
-  *verbose_out << "% mutation " << endl;
-  *verbose_out << "%     probability: " << p_mutation << endl;
-  *verbose_out << "%     change rate: " << p_mutation_change_rate << endl;
-  *verbose_out << "%   range        : " << mutation_range << endl;
-  *verbose_out << "%     change rate: " << mutation_range_change_rate << endl;
-  *verbose_out << "% Lambda         : " << lambda << endl;
+  if (XOVER_MUTATION_FUNC == "ADAPTIVE") {
+	  *verbose_out << "% crossover " << endl;
+	  *verbose_out << "%     probability : adaptive" << endl;
+	  *verbose_out << "%     ratio       : " << xover_ratio << endl;
+	  *verbose_out << "%     change rate : " << xover_ratio_change_rate << endl;
+	  *verbose_out << "% mutation " << endl;
+	  *verbose_out << "%     probability : adaptive" << p_mutation << endl;
+	  *verbose_out << "%     range factor: " << mutation_range << endl;
+	  *verbose_out << "%     change rate : " << mutation_range_change_rate << endl;
+  }
+  else {
+	  *verbose_out << "% crossover " << endl;
+	  *verbose_out << "%     probability: " << p_xover << endl;
+	  *verbose_out << "%     change rate: " << p_xover_change_rate << endl;
+	  *verbose_out << "%   ratio        : " << xover_ratio << endl;
+	  *verbose_out << "%     change rate: " << xover_ratio_change_rate << endl;
+	  *verbose_out << "% mutation " << endl;
+	  *verbose_out << "%     probability: " << p_mutation << endl;
+	  *verbose_out << "%     change rate: " << p_mutation_change_rate << endl;
+	  *verbose_out << "%   range factor : " << mutation_range << endl;
+	  *verbose_out << "%     change rate: " << mutation_range_change_rate << endl;
+  }
   *verbose_out << "% Parameter ranges: " << endl;
-  if (!VERBOSE) { // print message if verbose mode for debugging
+
+  if (!VERBOSE) { // print message even in verbose mode for debugging
 	  cout << "N. of variables: " << n_vars << endl;
 	  cout << "N. of features : " << n_features << endl;
 	  cout << "Max generations: " << max_gens << endl;
 	  cout << "Population size: " << pop_size << endl;
-	  cout << "crossover " << endl;
-	  cout << "    probability: " << p_xover << endl;
-	  cout << "    change rate: " << p_xover_change_rate << endl;
-	  cout << "  ratio        : " << xover_ratio << endl;
-	  cout << "    change rate: " << xover_ratio_change_rate << endl;
-	  cout << "mutation " << endl;
-	  cout << "    probability: " << p_mutation << endl;
-	  cout << "    change rate: " << p_mutation_change_rate << endl;
-	  cout << "  range        : " << mutation_range << endl;
-	  cout << "    change rate: " << mutation_range_change_rate << endl;
-	  cout << "Lambda         : " << lambda << endl;
+	  cout << "Fitness function with lambda = " << lambda << endl;
+	  if (XOVER_MUTATION_FUNC == "ADAPTIVE") {
+		  cout << "crossover " << endl;
+		  cout << "    probability : adaptive" << endl;
+		  cout << "    ratio       : " << xover_ratio << endl;
+		  cout << "    change rate : " << xover_ratio_change_rate << endl;
+		  cout << "mutation " << endl;
+		  cout << "    probability : adaptive" << endl;
+		  cout << "    range factor: " << mutation_range << endl;
+		  cout << "    change rate : " << mutation_range_change_rate << endl;
+	  }
+	  else {
+		  cout << "crossover " << endl;
+		  cout << "    probability: " << p_xover << endl;
+		  cout << "    change rate: " << p_xover_change_rate << endl;
+		  cout << "  ratio        : " << xover_ratio << endl;
+		  cout << "    change rate: " << xover_ratio_change_rate << endl;
+		  cout << "mutation " << endl;
+		  cout << "    probability: " << p_mutation << endl;
+		  cout << "    change rate: " << p_mutation_change_rate << endl;
+		  cout << "  range        : " << mutation_range << endl;
+		  cout << "    change rate: " << mutation_range_change_rate << endl;
+	  }
   }
   if (n_vars < 2)
   {
@@ -914,7 +948,6 @@ void initialize ( ifstream& input, int &seed )
   }
   // set tournament size
   tournament_size = size_t(ceil(sqrt(pop_size)));
-
   lowest_correlation_over_strength = 999999999;
 }
 //****************************************************************************80
@@ -1019,7 +1052,7 @@ void mutate ( int &seed )
     for ( size_t g = 0; g < n_vars; g++ )
     {
       x = r8_uniform_ab ( a, b, seed );
-	  if (strcmp(XOVER_MUTATION_FUNC, "ADAPTIVE") == 0) {
+	  if ( XOVER_MUTATION_FUNC == "ADAPTIVE") {
 		  double k = 0.5;
 		  double bestFitness = population[pop_size].fitness;
 		  p_mutation = max(0.05, min(k, k * (bestFitness - population[mem].fitness) / (bestFitness - averageFitness)));
@@ -1096,6 +1129,7 @@ double r8_uniform_ab ( double a, double b, int &seed )
     cerr << "\n";
     cerr << "R8_UNIFORM_AB - Fatal error!\n";
     cerr << "  Input value of SEED = 0.\n";
+	cerr << "  You are lucky. This happens rarely. Pleas run the program again.\n";
     exit ( 1 );
   }
 
@@ -1173,8 +1207,8 @@ void report ( int generation )
   if ( generation == 0 )
   {
     *verbose_out << "\n";
-    *verbose_out << "% Generation       Best            Average    Correlation         Overall         Overall          Overall\n";
-    *verbose_out << "%   number        fitness          fitness    over strength       OOB error      correlation       Variance\n";
+    *verbose_out << "% Generation       Best            Average    Correlation         Overall         Overall          Overall        Overall\n";
+    *verbose_out << "%   number        fitness          fitness    over strength       OOB error      correlation       Variance       Strength\n";
     *verbose_out << "\n";
   }
 
@@ -1202,6 +1236,7 @@ void report ( int generation )
 	   << "  " << setw(14) << overallPredictionError
 	   << "  " << setw(14) << overallCorrelation
 	   << "  " << setw(14) << overallVariance
+	   << "  " << setw(14) << overallStrength
 	   << "\n";
 
   // print trees
@@ -1279,10 +1314,10 @@ void selector ( int &seed )
     // update fiteness accroding to correlation in the new population
 	for (size_t mem2 = 0; mem2 < pop_size; mem2++) {
 		double introduced_correlation, reduced_fitness;
-		if (strcmp(CORRELATION_FUNC, "AVG") == 0) {
+		if (CORRELATION_FUNC == "AVG") {
 			introduced_correlation = population[mem2].correlation_array[winner] / pop_size;
 		}
-		else if (strcmp(CORRELATION_FUNC, "MAX") == 0) {
+		else if (CORRELATION_FUNC == "MAX") {
 			introduced_correlation = max(0.0, population[mem2].correlation_array[winner] - population[mem2].correlation);
 		}
 		population[mem2].correlation = min(population[mem2].correlation + introduced_correlation, 1.0);
@@ -1411,4 +1446,13 @@ void Xover ( int one, int two, int &seed )
   }
   
   return;
+}
+
+void diehalf() {
+	sort(population.begin(), population.end(), [](genotype a, genotype b) {return a.fitness > b.fitness; });
+	const int half = ceil(pop_size / 2.0);
+	/*for (int i = 0; i < floor(pop_size / 2.0); i++) {
+		population[half + i] = population[i];
+	}*/
+	pop_size = half;
 }

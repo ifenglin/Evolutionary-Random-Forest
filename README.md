@@ -1,7 +1,22 @@
-[![Build Status](https://travis-ci.org/imbs-hl/ranger.svg?branch=master)](https://travis-ci.org/imbs-hl/ranger)
-[![Coverage Status](https://coveralls.io/repos/github/imbs-hl/ranger/badge.svg?branch=master)](https://coveralls.io/github/imbs-hl/ranger?branch=master)
-![CRAN Downloads month](http://cranlogs.r-pkg.org/badges/ranger?color=brightgreen)
-![CRAN Downloads overall](http://cranlogs.r-pkg.org/badges/grand-total/ranger?color=brightgreen)
+## Growing Random Forest with Diverse Trees through Evolution for Semantic Segmentation
+### A thesis for a Master of Science at Technical University of Berlin
+
+Random Forest is a machine learning model that has been well researched and has gained established mathematical foundation. An understanding of the underlying mechanisms suggests approaches to improve the model further. By extending the flexibility of the model's technical architecture and designing appropriate criteria for evaluation of its performance, this study progresses from the adjustment of the parameters to a multi-objective optimization of an ensemble classifier that minimizes the correlations between its individual classifiers and maximizes their correctness and precision. Genetic algorithms are used to solve this optimization problem, and through the evolutionary progress, the random forest decision trees achieve higher correctness, greater precision and lower correlation with other trees in the population. Various evaluation techniques and evolutionary strategies are tested to develop the most effective learning model, to which I give the name Evolutionary Random Forest. Finally, the new model is used to solve the semantic segmentation problem with the data in The Cityscapes Dataset. On the contrary to expectations, no significant improvement has been found in the solutions. The new model is helpful on finding local optimums in the solution space, but the conventional model is a fairly effective tool to the problem in this study.
+
+The program is based on Ranger, a fast implementation of Random Forest (see below.) The important introduced implementations are in the following files:
+
+cpp_version\src\main.exe: read settings from forest_init_config.txt,  run a genetic algorithm (GA) that initilize genes randomly, evaluate/reproduce/select members of the population, and produce logs and reports.
+
+cpp_version\src\Genotype: define the genotype of trees.
+
+cpp_version\src\Forest\rf.cpp: load data, case weight, and prior distribution files, and initialize a forest.
+
+cpp_version\src\Forest\Forest.cpp,
+cpp_version\src\Forest\ForestClassification.cpp: initilize Evolutionary Random Forest by initializing trees with individual genes, and evaluate the trees and the forest with out-of-bag samples.
+
+cpp_version\src\Forest\Tree.cpp
+cpp_version\src\Forest\TreeClassification.cpp: initilize trees differently based on their genes.
+
 ## ranger: A Fast Implementation of Random Forests
 Marvin N. Wright
 
